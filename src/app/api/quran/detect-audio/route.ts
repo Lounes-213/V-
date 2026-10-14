@@ -7,7 +7,7 @@ import { computeTajweedWordWeight } from "@/lib/audio/tajweed-aligner";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 const ENDPOINT = "https://generativelanguage.googleapis.com/v1beta";
 
@@ -360,10 +360,10 @@ Return ONLY a valid JSON array:
           generationConfig: {
             responseMimeType: "application/json",
             temperature: 0.1,
-            maxOutputTokens: 4096,
+            maxOutputTokens: 8192,
           },
         }),
-        signal: AbortSignal.timeout(20000),
+        signal: AbortSignal.timeout(60000),
       });
 
       if (res.ok) {
@@ -375,7 +375,7 @@ Return ONLY a valid JSON array:
         }
         const parsed = JSON.parse(cleanText) as { word?: string; ayah?: number; start?: number; end?: number }[];
         if (Array.isArray(parsed) && parsed.length > 0) {
-          console.log(`[detect-audio] Forced alignment succeeded with ${model}: aligned ${parsed.length} words`);
+          console.log(`[detect-audio] Forced alignment succeeded with ${model}: aligned ${parsed.length} words for duration ${durationSec.toFixed(1)}s`);
           const resultWords: { text: string; ayah: number; start: number; end: number }[] = [];
           for (let i = 0; i < parsed.length; i++) {
             const pw = parsed[i]!;
@@ -641,7 +641,7 @@ async function tryWhisperTranscription(bytes: Buffer, mimeType: string, _apiKey?
 async function transcribeAudioWithGemini(bytes: Buffer, mimeType: string, apiKey: string): Promise<string> {
   try {
     const b64 = bytes.toString("base64");
-    const prompt = "You are an expert Quran transcriber. Listen to this recitation and output the exact Arabic Quranic words recited. Return ONLY the Arabic words recited, with no explanation or punctuation.";
+    const prompt = "You are an expert Quran transcriber. Listen carefully to this recitation (which may be a long recitation of multiple verses or a complete surah, up to 5 minutes) and output the exact Arabic Quranic words recited from start to finish. Return ONLY the Arabic words recited, with no explanation or punctuation.";
     const res = await callGeminiContent(
       apiKey,
       [
@@ -653,8 +653,8 @@ async function transcribeAudioWithGemini(bytes: Buffer, mimeType: string, apiKey
           ],
         },
       ],
-      { maxOutputTokens: 2048 },
-      30_000,
+      { maxOutputTokens: 8192 },
+      60_000,
     );
     if (res.ok && res.data) {
       const text = res.data.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? "").join("").trim() ?? "";
@@ -677,47 +677,72 @@ async function identifyPassageFromText(
   const clean = text.trim();
   if (clean.length < 3) return null;
 
+  const words = clean.split(/\s+/).filter(Boolean);
+  const isMultiAyahLikely = words.length > 14;
+
   // 1. Instant check against local Canonical Quran index (0ms, 0 quota)
-  try {
-    const localCandidates = matchAyah(clean, CANONICAL_INDEX, { limit: 1, minScore: 0.62 });
-    if (localCandidates[0]) {
-      const c = localCandidates[0];
-      const [s, a] = c.id.split(":").map(Number);
-      if (s && a) {
-        return {
-          surah: s,
-          fromAyah: a,
-          toAyah: a,
-          recitedText: clean,
-          ayahs: [{ ayah: a, text: clean }],
-        };
+  if (!isMultiAyahLikely) {
+    try {
+      const localCandidates = matchAyah(clean, CANONICAL_INDEX, { limit: 1, minScore: 0.62 });
+      if (localCandidates[0]) {
+        const c = localCandidates[0];
+        const [s, a] = c.id.split(":").map(Number);
+        if (s && a) {
+          return {
+            surah: s,
+            fromAyah: a,
+            toAyah: a,
+            recitedText: clean,
+            ayahs: [{ ayah: a, text: clean }],
+          };
+        }
       }
+    } catch {
+      /* fallback to AI */
     }
-  } catch {
-    /* fallback to AI */
+  } else {
+    // For longer multi-verse texts, check boundaries for instant 0ms span detection
+    try {
+      const startCandidate = matchAyah(words.slice(0, 10).join(" "), CANONICAL_INDEX, { limit: 1, minScore: 0.58 });
+      const endCandidate = matchAyah(words.slice(-10).join(" "), CANONICAL_INDEX, { limit: 1, minScore: 0.58 });
+      if (startCandidate[0] && endCandidate[0]) {
+        const [s1, a1] = startCandidate[0].id.split(":").map(Number);
+        const [s2, a2] = endCandidate[0].id.split(":").map(Number);
+        if (s1 && s2 && s1 === s2 && a1 && a2) {
+          return {
+            surah: s1,
+            fromAyah: Math.min(a1, a2),
+            toAyah: Math.max(a1, a2),
+            recitedText: clean,
+            ayahs: [],
+          };
+        }
+      }
+    } catch {
+      /* fallback to AI */
+    }
   }
 
   // 2. Gemini Text identification (gemini-3.8-flash with fallback)
   try {
     const prompt = `You are an expert Quran scholar.
-Given this recited Quran passage in Arabic:
+Given this recited Quran passage in Arabic (which may be a long recitation of multiple verses or a complete surah, up to 5 minutes):
 "${clean}"
 
 Identify:
 1. 'surah': Surah number (1 to 114).
-2. 'fromAyah': First Ayah recited (1-based).
-3. 'toAyah': Last Ayah recited (1-based, >= fromAyah).
+2. 'fromAyah': First Ayah recited in this passage (1-based).
+3. 'toAyah': Last Ayah recited in this passage (1-based, >= fromAyah). Detect ALL consecutive Ayahs recited from the very beginning to the very end.
 4. 'recitedText': Verified Arabic text.
-5. 'ayahs': Array of {"ayah": number, "text": string} for each verse in that passage.
 
 Return ONLY valid JSON:
-{"surah": 1, "fromAyah": 1, "toAyah": 3, "recitedText": "...", "ayahs": [{"ayah": 1, "text": "..."}]}`;
+{"surah": 1, "fromAyah": 1, "toAyah": 7, "recitedText": "..."}`;
 
     const res = await callGeminiContent(
       apiKey,
       [{ parts: [{ text: prompt }] }],
-      { responseMimeType: "application/json", maxOutputTokens: 2048 },
-      30_000,
+      { responseMimeType: "application/json", maxOutputTokens: 4096 },
+      35_000,
     );
 
     if (res.ok && res.data) {
@@ -997,9 +1022,9 @@ Return valid JSON with keys: surah, fromAyah, toAyah, isPartial, confidence, rec
   const rawFrom = Math.max(1, Math.min(maxAyahsInSurah, Number(result.fromAyah) || 1));
   let rawTo = Math.max(rawFrom, Math.min(maxAyahsInSurah, Number(result.toAyah) || rawFrom));
 
-  // Guard against wildly hallucinated wide ayah ranges (e.g. 30 to 40 on a 5-10s clip)
-  // Short surahs (e.g. Al-Kawthar 3 verses, Al-Ikhlas 4 verses) are recited quickly.
-  const maxPlausibleAyahs = Math.max(8, Math.ceil(durationSec / 0.8));
+  // Guard against wildly hallucinated wide ayah ranges
+  // Short surahs (e.g. Al-Kawthar, Al-Ikhlas) are recited quickly; 5-minute recitations can span dozens of ayahs.
+  const maxPlausibleAyahs = Math.max(15, Math.ceil(durationSec / 0.7));
   if (rawTo - rawFrom + 1 > maxPlausibleAyahs) {
     console.warn(`[detect-audio] Clamping hallucinated ayah span (${rawFrom}..${rawTo}) to max plausible (${maxPlausibleAyahs} ayahs for ${durationSec.toFixed(1)}s)`);
     rawTo = Math.min(maxAyahsInSurah, rawFrom + maxPlausibleAyahs - 1);

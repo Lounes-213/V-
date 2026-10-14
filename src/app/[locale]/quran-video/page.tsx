@@ -509,10 +509,10 @@ async function fetchReciterWordSegments(
 }
 
 /**
- * Extracts a lightweight 16kHz mono WAV snippet (~950KB, up to 60 seconds) from any audio or video file.
- * This guarantees ultra-fast upload (<100ms) and instant AI processing (<2.0s) on both mobile and desktop.
+ * Extracts a lightweight 16kHz mono WAV snippet (up to 300 seconds / 5 minutes) from any audio or video file.
+ * This guarantees ultra-fast upload and instant AI processing on both mobile and desktop.
  */
-async function extractLightweightAudio(blobOrFile: Blob, maxAiSeconds = 60): Promise<{ blob: Blob; duration: number }> {
+async function extractLightweightAudio(blobOrFile: Blob, maxAiSeconds = 300): Promise<{ blob: Blob; duration: number }> {
   try {
     const AudioCtxClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     const tempCtx = new AudioCtxClass();
@@ -521,7 +521,7 @@ async function extractLightweightAudio(blobOrFile: Blob, maxAiSeconds = 60): Pro
     tempCtx.close();
 
     const fullDuration = decoded.duration;
-    // For AI passage detection, up to 60s captures the full video reel without truncating ayahs
+    // For AI passage detection, up to 300s (5 minutes) captures full surahs and long passages without truncating ayahs
     const snippetDuration = Math.min(fullDuration, maxAiSeconds);
     const targetSampleRate = 16000;
     const targetLength = Math.max(1, Math.floor(snippetDuration * targetSampleRate));
@@ -777,7 +777,7 @@ export default function QuranVideoPage() {
 
         const recognizedText = transcribedWordsRef.current;
         setStatusMessage("استخراج ومعالجة الصوت...");
-        const { blob: lightBlob, duration } = await extractLightweightAudio(rawBlob, 60);
+        const { blob: lightBlob, duration } = await extractLightweightAudio(rawBlob, 300);
         handleAudioBlob(lightBlob, duration || recordingSec || 10, url, rawBlob, recognizedText);
       };
 
@@ -828,8 +828,8 @@ export default function QuranVideoPage() {
     setOriginalAudioBlob(file);
     setOriginalAudioUrl(url);
 
-    // Extract lightweight WAV for flash-speed AI detection while preserving full file duration
-    const { blob: lightBlob, duration } = await extractLightweightAudio(file, 60);
+    // Extract lightweight WAV for flash-speed AI detection while preserving full file duration (up to 5 minutes)
+    const { blob: lightBlob, duration } = await extractLightweightAudio(file, 300);
     handleAudioBlob(lightBlob, duration, url, file, "");
   };
 
@@ -2742,7 +2742,7 @@ export default function QuranVideoPage() {
                   اسحب وأفلت ملف الصوت أو الفيديو هنا، أو انقر للاختيار
                 </div>
                 <div style={{ color: "rgba(200,210,230,0.5)", fontSize: 12, direction: "rtl" }}>
-                  صيغ مقبولة: MP3, WAV, M4A, WEBM, MP4 (تتم معالجة الترددات الصوتية والمزامنة فورياً)
+                  صيغ مقبولة: MP3, WAV, M4A, WEBM, MP4 (يدعم مقاطع حتى 5 دقائق وسور كاملة أو آيات متعددة)
                 </div>
                 <input
                   id="fileInput"
