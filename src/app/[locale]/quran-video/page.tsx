@@ -570,7 +570,7 @@ export default function QuranVideoPage() {
   const [showSplash, setShowSplash] = React.useState<boolean>(true);
   const [showSettingsModal, setShowSettingsModal] = React.useState<boolean>(false);
   const [exportQuality, setExportQuality] = React.useState<"1080p" | "720p">("1080p");
-  const [mobileDrawerOpen, setMobileDrawerOpen] = React.useState<boolean>(true);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = React.useState<boolean>(false);
   const [entryMode, setEntryMode] = React.useState<"upload" | "preselected">("upload");
   const [showManualAyahOption, setShowManualAyahOption] = React.useState<boolean>(false);
   const [selectedReciterId, setSelectedReciterId] = React.useState<number>(7);
@@ -1555,7 +1555,7 @@ export default function QuranVideoPage() {
         stream.addTrack(track);
       }
 
-      const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 8_000_000 });
+      const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 16_000_000 });
       const chunks: BlobPart[] = [];
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) chunks.push(e.data);
@@ -1624,6 +1624,26 @@ export default function QuranVideoPage() {
       const blob = new Blob(chunks, { type: mimeType });
       const url = URL.createObjectURL(blob);
       setExportedVideoUrl(url);
+
+      // Direct automatic download immediately without extra click!
+      try {
+        const surahPart = result.surahNameSimple || `surah-${result.surah}`;
+        const ayahPart = `${result.fromAyah || result.ayah}-${result.toAyah || result.ayah}`;
+        const downloadName = `quran_${surahPart}_ayah_${ayahPart}_${customization.aspect.replace(":", "x")}.webm`;
+        const autoLink = document.createElement("a");
+        autoLink.href = url;
+        autoLink.download = downloadName;
+        document.body.appendChild(autoLink);
+        autoLink.click();
+        setTimeout(() => {
+          try {
+            document.body.removeChild(autoLink);
+          } catch {}
+        }, 500);
+      } catch (dlErr) {
+        console.warn("Direct download trigger error:", dlErr);
+      }
+
       setStage("exported");
     } catch (err) {
       console.error(err);
@@ -1685,7 +1705,7 @@ export default function QuranVideoPage() {
                     boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
                   }}
                 >
-                  <span>➕ تكبير الكادر</span>
+                  <span>تكبير الكادر</span>
                   <span style={{ fontSize: 11, color: "#B45309" }}>(+4%)</span>
                 </button>
                 <button
@@ -1707,7 +1727,7 @@ export default function QuranVideoPage() {
                     boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
                   }}
                 >
-                  <span>➖ تصغير الكادر</span>
+                  <span>تصغير الكادر</span>
                   <span style={{ fontSize: 11, color: "#B45309" }}>(-4%)</span>
                 </button>
               </div>
@@ -1730,7 +1750,7 @@ export default function QuranVideoPage() {
                     gap: 6,
                   }}
                 >
-                  <span>➕ تكبير الخط</span>
+                  <span>تكبير الخط</span>
                   <span style={{ fontSize: 11, color: "#64748B" }}>(+4px)</span>
                 </button>
                 <button
@@ -1751,12 +1771,12 @@ export default function QuranVideoPage() {
                     gap: 6,
                   }}
                 >
-                  <span>➖ تصغير الخط</span>
+                  <span>تصغير الخط</span>
                   <span style={{ fontSize: 11, color: "#64748B" }}>(-4px)</span>
                 </button>
               </div>
               <div style={{ fontSize: 11, color: "#854D0E", marginTop: 8, textAlign: "center", fontWeight: 600 }}>
-                💡 يمكنك أيضاً لمس شاشة المعاينة وسحب أي من الزوايا والمقابض الأربعة مباشرة!
+                يمكنك لمس شاشة المعاينة وسحب أي من المقابض الأربعة مباشرة
               </div>
             </div>
 
@@ -1961,7 +1981,7 @@ export default function QuranVideoPage() {
               </label>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
                 {[
-                  { id: "one_by_one" as WordMode, label: "كلمة بكلمة", badge: "⭐ موصى به", desc: "تركيز فوري مع التلاوة" },
+                  { id: "one_by_one" as WordMode, label: "كلمة بكلمة", badge: "موصى به", desc: "تركيز فوري مع التلاوة" },
                   { id: "two_by_two" as WordMode, label: "كلمتان بكلمتين", badge: "ثنائي", desc: "عرض كلمتين متتاليتين" },
                   { id: "full_ayah" as WordMode, label: "الآية كاملة", badge: "شامل", desc: "عرض كامل النص" },
                 ].map((m) => {
@@ -2715,13 +2735,13 @@ export default function QuranVideoPage() {
       {/* Hidden export canvas */}
       <canvas ref={exportCanvasRef} style={{ display: "none" }} />
 
-      {/* 3. Standalone Clean Minimal App Header */}
+      {/* 3. Standalone Clean Minimal App Header: ONLY App Name & Settings */}
       <header
         style={{
           background: "#FFFFFF",
           borderBottom: "1px solid #E2E8F0",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
-          padding: "8px 16px",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
+          padding: "10px 20px",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
@@ -2731,136 +2751,55 @@ export default function QuranVideoPage() {
           width: "100%",
         }}
       >
-        {/* Right: Clean App Brand */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {/* Right (Start): App Name ONLY */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div
             style={{
               width: 34,
               height: 34,
-              borderRadius: 9,
+              borderRadius: 10,
               background: "linear-gradient(135deg, #FEF9C3 0%, #FEF08A 100%)",
               border: "1px solid #FDE047",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               color: "#854D0E",
+              fontWeight: 900,
+              fontSize: 18,
+              fontFamily: "'Amiri', serif",
+              boxShadow: "0 1px 3px rgba(212, 175, 55, 0.2)",
             }}
           >
-            <IconQuran size={20} color="#B45309" />
+            ر
           </div>
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontSize: 17, fontWeight: 900, color: "#0F172A", letterSpacing: "-0.01em" }}>
-                رِوَايَة
-              </span>
-              <span
-                style={{
-                  fontSize: 10,
-                  fontWeight: 800,
-                  padding: "1px 5px",
-                  borderRadius: 5,
-                  background: "#FEF9C3",
-                  color: "#854D0E",
-                  border: "1px solid #FDE047",
-                }}
-              >
-                مُصمّم الآيات
-              </span>
-            </div>
-          </div>
+          <span style={{ fontSize: 19, fontWeight: 900, color: "#0F172A", letterSpacing: "-0.01em" }}>
+            رِوَايَة
+          </span>
         </div>
 
-        {/* Center: Surah & Ayah Badge + Riwayah Pill */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <button
-            type="button"
-            onClick={() => setShowEditAyahModal(true)}
-            style={{
-              padding: "5px 10px",
-              fontSize: 12,
-              fontWeight: 800,
-              background: "#F8FAFC",
-              border: "1px solid #E2E8F0",
-              borderRadius: 8,
-              color: "#1E293B",
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
-              cursor: "pointer",
-            }}
-            title="انقر لتغيير السورة والآيات"
-          >
-            <span>{currentSurahMeta.nameArabic}</span>
-            <span style={{ color: "#D4AF37", fontSize: 11 }}>({editFromAyah} - {editToAyah})</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleRiwayahChange(customization.riwayah === "hafs" ? "warsh" : "hafs")}
-            title="انقر للتبديل بين رواية ورش وحفص"
-            style={{
-              padding: "5px 10px",
-              fontSize: 11,
-              fontWeight: 800,
-              background: "linear-gradient(135deg, #FEF9C3 0%, #FEF08A 100%)",
-              border: "1.5px solid #F59E0B",
-              borderRadius: 8,
-              color: "#854D0E",
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
-              cursor: "pointer",
-              boxShadow: "0 1px 4px rgba(245, 158, 11, 0.15)",
-            }}
-          >
-            <span>{customization.riwayah === "warsh" ? "ورش" : "حفص"}</span>
-            <span style={{ fontSize: 10, color: "#B45309" }}>⇄</span>
-          </button>
-        </div>
-
-        {/* Left: Quick Install App + Export Action */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <button
-            type="button"
-            onClick={triggerPwaInstall}
-            style={{
-              padding: "6px 10px",
-              fontSize: 12,
-              fontWeight: 700,
-              background: isStandaloneApp ? "#ECFDF5" : "#FFFFFF",
-              border: isStandaloneApp ? "1px solid #A7F3D0" : "1px solid #E2E8F0",
-              borderRadius: 8,
-              color: isStandaloneApp ? "#065F46" : "#475569",
-              display: "flex",
-              alignItems: "center",
-              gap: 5,
-              cursor: "pointer",
-            }}
-            title={isStandaloneApp ? "التطبيق مثبت على جهازك" : "تثبيت التطبيق على الشاشة الرئيسية"}
-          >
-            <IconSmartphone size={14} color={isStandaloneApp ? "#059669" : "#64748B"} />
-            <span className="hidden-on-tiny-screen">{isStandaloneApp ? "تطبيق مثبت" : "تثبيت"}</span>
-          </button>
-
-          {(stage === "detected" || stage === "exporting" || stage === "exported") && (
-            <button
-              onClick={exportVideo}
-              disabled={stage === "exporting"}
-              style={{
-                ...primaryBtn,
-                width: "auto",
-                padding: "6px 14px",
-                fontSize: 12,
-                display: "flex",
-                alignItems: "center",
-                gap: 5,
-              }}
-            >
-              <IconExport size={14} color="#1A1300" />
-              <span>{stage === "exporting" ? `${exportProgress}%` : "تصدير"}</span>
-            </button>
-          )}
-        </div>
+        {/* Left (End): Settings Button ONLY */}
+        <button
+          type="button"
+          onClick={() => setShowSettingsModal(true)}
+          style={{
+            background: "#F8FAFC",
+            border: "1px solid #CBD5E1",
+            borderRadius: 10,
+            padding: "8px 16px",
+            display: "flex",
+            alignItems: "center",
+            gap: 7,
+            cursor: "pointer",
+            fontSize: 13,
+            fontWeight: 700,
+            color: "#1E293B",
+            transition: "all 0.15s ease",
+          }}
+          title="إعدادات التطبيق"
+        >
+          <IconSettings size={16} color="#475569" />
+          <span>الإعدادات</span>
+        </button>
       </header>
 
       {/* Main Container */}
@@ -3043,7 +2982,7 @@ export default function QuranVideoPage() {
             {/* Onboarding Header & App Definition */}
             <div style={{ textAlign: "center", padding: "6px 0 2px" }}>
               <span style={goldBadge}>
-                ✦ رِوَايَة | استوديو إنتاج مقاطع القرآن الكريم
+                رِوَايَة — استوديو إنتاج مقاطع القرآن الكريم
               </span>
               <h2 style={{ fontSize: "clamp(20px, 3.5vw, 26px)", fontWeight: 900, color: "#0F172A", margin: "8px 0 4px" }}>
                 صمّم مقاطع قرآنية متحركة كلمة بكلمة
@@ -3054,10 +2993,14 @@ export default function QuranVideoPage() {
             </div>
 
             <Card style={{ padding: "16px 18px" }}>
-              {/* Top Segmented Mode Selector */}
-              <div
-                style={{
-                  display: "grid",
+              {stage === "processing" ? (
+                <CircularProgress progress={progress} statusMessage={statusMessage} />
+              ) : (
+                <>
+                  {/* Top Segmented Mode Selector */}
+                  <div
+                    style={{
+                      display: "grid",
                   gridTemplateColumns: "1fr 1fr",
                   gap: 8,
                   background: "#F1F5F9",
@@ -3185,7 +3128,7 @@ export default function QuranVideoPage() {
                             color: "#475569",
                           }}
                         >
-                          🎙 أو سجّل تلاوتك مباشرة عبر المايكروفون
+                          أو تسجيل التلاوة مباشرة عبر المايكروفون
                         </button>
                       )}
                     </div>
@@ -3211,7 +3154,6 @@ export default function QuranVideoPage() {
                       }}
                     >
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ color: "#854D0E" }}>⚙</span>
                         <span>تحديد السورة والآيات يدويًا (اختياري - لمطابقة مسبقة دقيقة)</span>
                       </div>
                       <span style={{ fontSize: 12, transform: showManualAyahOption ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>
@@ -3518,15 +3460,7 @@ export default function QuranVideoPage() {
                   )}
                 </div>
               )}
-
-              {/* Processing Progress Indicator */}
-              {stage === "processing" && (
-                <div style={{ marginTop: 20, textAlign: "center" }}>
-                  <ProgressBar value={progress} />
-                  <div style={{ fontSize: 13, color: "#854D0E", marginTop: 8, fontWeight: 700 }}>
-                    {statusMessage || "جاري إعداد الآيات والتزامن..."} ({progress}%)
-                  </div>
-                </div>
+                </>
               )}
             </Card>
           </div>
@@ -3828,15 +3762,15 @@ export default function QuranVideoPage() {
             </div>
 
             {/* ---------------- B) MOBILE SINGLE-PAGE WORKSPACE ---------------- */}
-            <div className="quran-mobile-workspace">
+            <div className={`quran-mobile-workspace ${mobileDrawerOpen ? "drawer-open" : "drawer-closed"}`}>
               {/* Pinned Top Preview & Scrubber */}
               <div className="quran-mobile-preview-box">
                 <div
-                  className="canvas-frame-container"
+                  className={`canvas-frame-container ${customization.aspect === "16:9" ? "aspect-16-9" : ""}`}
                   onClick={togglePlayPreview}
                   style={{
                     position: "relative",
-                    width: "auto",
+                    width: customization.aspect === "16:9" ? "100%" : "auto",
                     aspectRatio: customization.aspect.replace(":", "/"),
                     margin: "0 auto",
                     borderRadius: 16,
@@ -3949,26 +3883,28 @@ export default function QuranVideoPage() {
 
               {/* Scrollable Mobile Controls Drawer */}
               <div className="quran-mobile-drawer">
-                {/* 4 Action Buttons Bar */}
+                {/* 5 Bottom Tabs Bar + Export Button */}
                 <div
                   style={{
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    padding: "6px 10px",
+                    padding: "8px 10px",
                     background: "#FFFFFF",
-                    borderBottom: "1px solid #E2E8F0",
+                    borderTop: "1px solid #E2E8F0",
+                    borderBottom: mobileDrawerOpen ? "1px solid #E2E8F0" : "none",
+                    boxShadow: "0 -2px 10px rgba(0,0,0,0.04)",
                   }}
                 >
-                  <div style={{ display: "flex", gap: 4, flex: 1 }}>
+                  <div style={{ display: "flex", gap: 5, flex: 1, alignItems: "center" }}>
                     {[
-                      { id: "cadre" as const, label: "الكادر", icon: <IconCanvas size={13} /> },
-                      { id: "animation" as const, label: "الحركة", icon: <IconZap size={13} /> },
-                      { id: "scene" as const, label: "المشهد", icon: <IconSparkles size={13} /> },
-                      { id: "quran" as const, label: "المصحف", icon: <IconQuran size={13} /> },
-                      { id: "settings" as const, label: "إعدادات", icon: <IconSettings size={13} /> },
+                      { id: "cadre" as const, label: "الكادر", icon: <IconCanvas size={15} /> },
+                      { id: "animation" as const, label: "الحركة", icon: <IconZap size={15} /> },
+                      { id: "scene" as const, label: "المشهد", icon: <IconSparkles size={15} /> },
+                      { id: "quran" as const, label: "المصحف", icon: <IconQuran size={15} /> },
+                      { id: "settings" as const, label: "الإعدادات", icon: <IconSettings size={15} /> },
                     ].map((tab) => {
-                      const active = designerTab === tab.id;
+                      const active = designerTab === tab.id && mobileDrawerOpen;
                       return (
                         <button
                           key={tab.id}
@@ -3987,15 +3923,16 @@ export default function QuranVideoPage() {
                             flexDirection: "column",
                             alignItems: "center",
                             justifyContent: "center",
-                            gap: 2,
+                            gap: 3,
                             padding: "6px 1px",
-                            borderRadius: 8,
+                            borderRadius: 10,
                             fontSize: 10,
                             fontWeight: 700,
-                            border: active ? "1px solid #D4AF37" : "1px solid transparent",
+                            border: active ? "1.5px solid #D4AF37" : "1px solid transparent",
                             background: active ? "linear-gradient(135deg, #FEF9C3 0%, #FEF08A 100%)" : "#F8FAFC",
-                            color: active ? "#854D0E" : "#64748B",
+                            color: active ? "#854D0E" : "#475569",
                             cursor: "pointer",
+                            transition: "all 0.15s ease",
                           }}
                         >
                           {tab.icon}
@@ -4004,13 +3941,40 @@ export default function QuranVideoPage() {
                       );
                     })}
                   </div>
+
+                  {/* Fast Download / Export Button */}
                   <button
-                    onClick={() => setMobileDrawerOpen((o) => !o)}
-                    style={{ background: "none", border: "none", color: "#64748B", padding: "4px 6px", cursor: "pointer", display: "flex", alignItems: "center" }}
-                    title={mobileDrawerOpen ? "تصغير اللوحة" : "فتح اللوحة"}
+                    type="button"
+                    onClick={exportVideo}
+                    disabled={stage === "exporting"}
+                    style={{
+                      ...primaryBtn,
+                      width: "auto",
+                      padding: "8px 14px",
+                      marginRight: 6,
+                      fontSize: 12,
+                      fontWeight: 800,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                      borderRadius: 10,
+                      whiteSpace: "nowrap",
+                    }}
+                    title="تصدير وتحميل الفيديو مباشرة"
                   >
-                    <IconChevronDown size={16} />
+                    <IconExport size={13} color="#1A1300" />
+                    <span>{stage === "exporting" ? `${exportProgress}%` : "تحميل"}</span>
                   </button>
+
+                  {mobileDrawerOpen && (
+                    <button
+                      onClick={() => setMobileDrawerOpen(false)}
+                      style={{ background: "#F1F5F9", border: "none", color: "#64748B", padding: "6px", borderRadius: 8, cursor: "pointer", display: "flex", alignItems: "center", marginRight: 4 }}
+                      title="تصغير الإعدادات وتكبير شاشة العرض"
+                    >
+                      <IconChevronDown size={16} />
+                    </button>
+                  )}
                 </div>
 
                 {/* Drawer Body (only visible if open) */}
@@ -4054,10 +4018,10 @@ export default function QuranVideoPage() {
               <Card style={{ marginTop: 20 }}>
                 <div style={{ textAlign: "center", direction: "rtl" }}>
                   <h3 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 800, color: "#166534" }}>
-                    تم تصدير الفيديو بنجاح!
+                    تم تصدير وتحميل الفيديو بنجاح!
                   </h3>
                   <p style={{ color: "#64748B", fontSize: 13, marginBottom: 16 }}>
-                    يمكنك الآن معاينة وتحميل الفيديو القرآني المصمم
+                    تم تنزيل المقطع القرآني بجودة Full HD مباشرة على جهازك، ويمكنك أيضاً معاينته هنا
                   </p>
 
                   <div style={{ maxWidth: 340, margin: "0 auto 16px", borderRadius: 16, overflow: "hidden", border: "2px solid #D4AF37" }}>
@@ -4067,26 +4031,26 @@ export default function QuranVideoPage() {
                   <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
                     <a
                       href={exportedVideoUrl}
-                      download={`quran_${result.surah}_${result.ayah}.webm`}
+                      download={`quran_${result.surahNameSimple || "video"}_${result.ayah}.webm`}
                       style={{
-                        ...primaryBtn,
+                        ...ghostBtn,
                         textDecoration: "none",
                         width: "auto",
-                        padding: "10px 24px",
-                        fontSize: 14,
+                        padding: "10px 20px",
+                        fontSize: 13,
                         display: "inline-flex",
                         alignItems: "center",
                         gap: 8,
                       }}
                     >
-                      <IconExport size={16} color="#1A1300" />
-                      <span>تحميل الفيديو النهائي</span>
+                      <IconExport size={15} color="#475569" />
+                      <span>إعادة التحميل إذا لم يبدأ تلقائياً</span>
                     </a>
                     <button
                       onClick={() => setStage("detected")}
-                      style={{ ...ghostBtn, width: "auto", padding: "10px 20px", fontSize: 14 }}
+                      style={{ ...primaryBtn, width: "auto", padding: "10px 20px", fontSize: 13 }}
                     >
-                      تعديل الإعدادات وإعادة التصدير
+                      العودة لمعاينة الاستوديو
                     </button>
                   </div>
                 </div>
@@ -4165,6 +4129,11 @@ export default function QuranVideoPage() {
           100% { transform: translateX(-100%); }
         }
 
+        @keyframes spinSlow {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+
         .quran-desktop-workspace {
           display: grid;
           grid-template-columns: minmax(360px, 440px) minmax(0, 1fr);
@@ -4204,25 +4173,75 @@ export default function QuranVideoPage() {
             display: flex !important;
             flex-direction: column !important;
             align-items: center !important;
-            padding: 6px 12px 2px !important;
+            padding: 8px 12px 6px !important;
             background: #FFFFFF !important;
             border-bottom: 1px solid #E2E8F0 !important;
+            width: 100% !important;
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
           }
           .canvas-frame-container {
-            max-height: 42vh !important;
-            width: auto !important;
-          }
-          .canvas-frame-container canvas {
-            max-height: 42vh !important;
-            width: auto !important;
+            position: relative !important;
             margin: 0 auto !important;
+            border-radius: 16px !important;
+            overflow: hidden !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
           }
+
+          /* 16:9 Landscape takes 100% full width of the phone screen */
+          .canvas-frame-container.aspect-16-9 {
+            width: 100% !important;
+            max-width: 100% !important;
+          }
+          .canvas-frame-container.aspect-16-9 canvas {
+            width: 100% !important;
+            max-width: 100% !important;
+            height: auto !important;
+          }
+
+          /* Closed state: Preview screen is LARGE (في اللول تكون كبيرة) */
+          .quran-mobile-workspace.drawer-closed .canvas-frame-container {
+            max-height: 66vh !important;
+          }
+          .quran-mobile-workspace.drawer-closed .canvas-frame-container:not(.aspect-16-9) {
+            width: auto !important;
+          }
+          .quran-mobile-workspace.drawer-closed .canvas-frame-container canvas {
+            max-height: 66vh !important;
+            width: auto !important;
+          }
+          .quran-mobile-workspace.drawer-closed .canvas-frame-container.aspect-16-9 canvas {
+            width: 100% !important;
+            height: auto !important;
+            max-height: 66vh !important;
+          }
+
+          /* Open state: Preview screen smoothly shrinks (تقلص حجم شاشة العرض) */
+          .quran-mobile-workspace.drawer-open .canvas-frame-container {
+            max-height: 28vh !important;
+          }
+          .quran-mobile-workspace.drawer-open .canvas-frame-container:not(.aspect-16-9) {
+            width: auto !important;
+          }
+          .quran-mobile-workspace.drawer-open .canvas-frame-container canvas {
+            max-height: 28vh !important;
+            width: auto !important;
+          }
+          .quran-mobile-workspace.drawer-open .canvas-frame-container.aspect-16-9 canvas {
+            width: 100% !important;
+            height: auto !important;
+            max-height: 28vh !important;
+          }
+
           .quran-mobile-drawer {
             flex: 1 1 0% !important;
             display: flex !important;
             flex-direction: column !important;
             overflow: hidden !important;
             background: #F8FAFC !important;
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
           }
           .quran-mobile-drawer-body {
             flex: 1 1 0% !important;
@@ -4995,32 +5014,6 @@ function renderWordsAndBox(
 
     ctx.restore();
 
-    ctx.save();
-    ctx.font = `400 ${fontSize * 0.72}px ${fontName}`;
-    ctx.fillStyle = "rgba(43, 127, 255, 0.65)";
-    const wordWidth = ctx.measureText(activeWord.text).width;
-    ctx.fillText("﴿", W / 2 + wordWidth / 2 + 42, centerY);
-    ctx.fillText("﴾", W / 2 - wordWidth / 2 - 42, centerY);
-    ctx.restore();
-
-    if (activeIdx > 0 && words[activeIdx - 1]) {
-      ctx.save();
-      ctx.font = `400 ${fontSize * 0.48}px ${fontName}`;
-      ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
-      ctx.shadowColor = "rgba(0,0,0,0.85)";
-      ctx.shadowBlur = 8;
-      ctx.fillText(words[activeIdx - 1]!.text, W / 2 + wordWidth / 2 + 120, centerY);
-      ctx.restore();
-    }
-    if (activeIdx < words.length - 1 && words[activeIdx + 1]) {
-      ctx.save();
-      ctx.font = `400 ${fontSize * 0.48}px ${fontName}`;
-      ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
-      ctx.shadowColor = "rgba(0,0,0,0.85)";
-      ctx.shadowBlur = 8;
-      ctx.fillText(words[activeIdx + 1]!.text, W / 2 - wordWidth / 2 - 120, centerY);
-      ctx.restore();
-    }
     return;
   }
 
@@ -5543,6 +5536,78 @@ function Card({ children, style }: { children: React.ReactNode; style?: React.CS
       }}
     >
       {children}
+    </div>
+  );
+}
+
+function CircularProgress({ progress, statusMessage }: { progress: number; statusMessage?: string }) {
+  const radius = 52;
+  const stroke = 6;
+  const normalizedRadius = radius - stroke * 2;
+  const circumference = normalizedRadius * 2 * Math.PI;
+  const strokeDashoffset = circumference - (Math.min(100, Math.max(0, progress)) / 100) * circumference;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "36px 16px" }}>
+      <div style={{ position: "relative", width: 130, height: 130, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        {/* Animated spinning dashed outer aura */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            borderRadius: "50%",
+            border: "2px dashed #D4AF37",
+            animation: "spinSlow 8s linear infinite",
+            opacity: 0.6,
+          }}
+        />
+
+        <svg height={130} width={130} style={{ transform: "rotate(-90deg)" }}>
+          <circle
+            stroke="#F1F5F9"
+            fill="transparent"
+            strokeWidth={stroke}
+            r={normalizedRadius}
+            cx={65}
+            cy={65}
+          />
+          <circle
+            stroke="url(#progressGrad)"
+            fill="transparent"
+            strokeWidth={stroke}
+            strokeDasharray={`${circumference} ${circumference}`}
+            style={{
+              strokeDashoffset,
+              transition: "stroke-dashoffset 0.35s ease",
+              strokeLinecap: "round",
+            }}
+            r={normalizedRadius}
+            cx={65}
+            cy={65}
+          />
+          <defs>
+            <linearGradient id="progressGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#D4AF37" />
+              <stop offset="100%" stopColor="#F59E0B" />
+            </linearGradient>
+          </defs>
+        </svg>
+
+        <div style={{ position: "absolute", textAlign: "center" }}>
+          <div style={{ fontSize: 26, fontWeight: 900, color: "#854D0E", fontFamily: "'Cairo', sans-serif" }}>
+            {Math.round(progress)}%
+          </div>
+        </div>
+      </div>
+
+      <div style={{ marginTop: 20, textAlign: "center" }}>
+        <div style={{ fontSize: 15, fontWeight: 800, color: "#0F172A", marginBottom: 4 }}>
+          {statusMessage || "جاري معالجة الصوت واستخراج الآيات..."}
+        </div>
+        <div style={{ fontSize: 12, color: "#64748B" }}>
+          مطابقة التلاوة مع الرسم العثماني الشريف
+        </div>
+      </div>
     </div>
   );
 }
