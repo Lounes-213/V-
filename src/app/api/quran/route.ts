@@ -144,6 +144,7 @@ export async function GET(request: Request) {
     const from = Math.max(1, Number(searchParams.get("from") || "1"));
     const reciterId = Number(searchParams.get("reciter") || "7");
     const translationId = Number(searchParams.get("translation") || "136");
+    const riwayah = searchParams.get("riwayah") === "warsh" ? "warsh" : "hafs";
 
     if (!surah || surah < 1 || surah > 114) {
       return NextResponse.json({ error: "Invalid surah number." }, { status: 400 });
@@ -155,13 +156,14 @@ export async function GET(request: Request) {
     }
 
     const to = Math.min(surahMeta.ayahCount, Math.max(from, Number(searchParams.get("to") || surahMeta.ayahCount)));
-    const cacheKey = `${surah}:${translationId}`;
+    const cacheKey = `${surah}:${translationId}:${riwayah}`;
 
     if (surahCache.has(cacheKey)) {
       const cached = surahCache.get(cacheKey)!;
       const filtered = cached.verses.filter((v) => v.ayah >= from && v.ayah <= to);
       return NextResponse.json({
         ...cached,
+        riwayah,
         verses: filtered.map((v) => ({ ...v, audioUrl: getAudioUrl(surah, v.ayah, reciterId) })),
       });
     }
@@ -169,8 +171,12 @@ export async function GET(request: Request) {
     // Try fetching whole chapter from Quran.com Content API v4
     let chapterVerses: { ayah: number; uthmani: string; translation: string }[] = [];
     try {
+      const textEndpoint = riwayah === "warsh"
+        ? `https://api.quran.com/api/v4/quran/verses/warsh?chapter_number=${surah}`
+        : `https://api.quran.com/api/v4/quran/verses/uthmani?chapter_number=${surah}`;
+
       const [textRes, transRes] = await Promise.all([
-        fetch(`https://api.quran.com/api/v4/quran/verses/uthmani?chapter_number=${surah}`, {
+        fetch(textEndpoint, {
           headers: { accept: "application/json" },
           signal: AbortSignal.timeout(8000),
         }),
@@ -211,10 +217,11 @@ export async function GET(request: Request) {
         }
       }
     } catch {
-      // Fallback to AlQuran Cloud API for whole surah
+      // Fallback to AlQuran Cloud API for whole surah (Hafs or Warsh)
       try {
+        const edition = riwayah === "warsh" ? "ar.warsh,fr.montada" : "quran-uthmani,fr.montada";
         const fallbackRes = await fetch(
-          `https://api.alquran.cloud/v1/surah/${surah}/editions/quran-uthmani,fr.montada`,
+          `https://api.alquran.cloud/v1/surah/${surah}/editions/${edition}`,
           { headers: { accept: "application/json" }, signal: AbortSignal.timeout(8000) },
         );
         if (fallbackRes.ok) {

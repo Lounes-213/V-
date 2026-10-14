@@ -2,9 +2,8 @@
 
 import * as React from "react";
 import { analyzeSound, speechRanges, type SoundAnalysis } from "@/lib/audio/voice-activity";
-import { computeTajweedWordWeight, alignWordsAcoustically, snapWordToAcousticEnergy } from "@/lib/audio/tajweed-aligner";
+import { alignWordsAcoustically, computeTajweedWordWeight } from "@/lib/audio/tajweed-aligner";
 import { ALL_SURAHS } from "@/lib/quran/surahs-data";
-import { StudioTimeline, type TimelineLoop, type TimelineWord } from "@/components/quran/studio-timeline";
 
 /* -------------------------------------------------- MONOLINE SVG ICONS */
 
@@ -52,23 +51,6 @@ function IconVolumeMute({ size = 15, color = "currentColor" }: { size?: number; 
   );
 }
 
-function IconCaptions({ size = 18, color = "currentColor" }: { size?: number; color?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="2" y="4" width="20" height="16" rx="4" />
-      <path d="M7 15h3M14 15h3M7 11h10" />
-    </svg>
-  );
-}
-
-function IconAudioWave({ size = 18, color = "currentColor" }: { size?: number; color?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M3 12h2M7 8v8M11 5v14M15 9v6M19 11v2M21 12h1" />
-    </svg>
-  );
-}
-
 function IconDesign({ size = 18, color = "currentColor" }: { size?: number; color?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -86,32 +68,10 @@ function IconCanvas({ size = 18, color = "currentColor" }: { size?: number; colo
   );
 }
 
-function IconTajweed({ size = 18, color = "currentColor" }: { size?: number; color?: string }) {
+function IconSparkles({ size = 18, color = "currentColor" }: { size?: number; color?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="12" cy="12" r="9" />
-      <polyline points="12 6 12 12 16 14" />
-    </svg>
-  );
-}
-
-function IconAcoustic({ size = 15, color = "currentColor" }: { size?: number; color?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M12 2v20M17 5v14M7 9v6M22 10v4M2 10v4" />
-    </svg>
-  );
-}
-
-function IconTarget({ size = 15, color = "currentColor" }: { size?: number; color?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="12" cy="12" r="10" />
-      <circle cx="12" cy="12" r="4" />
-      <line x1="12" y1="2" x2="12" y2="4" />
-      <line x1="12" y1="20" x2="12" y2="22" />
-      <line x1="2" y1="12" x2="4" y2="12" />
-      <line x1="20" y1="12" x2="22" y2="12" />
+      <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3z" />
     </svg>
   );
 }
@@ -124,65 +84,10 @@ function IconExport({ size = 15, color = "currentColor" }: { size?: number; colo
   );
 }
 
-function IconCheck({ size = 15, color = "currentColor" }: { size?: number; color?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
-  );
-}
-
 function IconChevronRight({ size = 16, color = "currentColor" }: { size?: number; color?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <polyline points="9 18 15 12 9 6" />
-    </svg>
-  );
-}
-
-function IconPlus({ size = 14, color = "currentColor" }: { size?: number; color?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <line x1="12" y1="5" x2="12" y2="19" />
-      <line x1="5" y1="12" x2="19" y2="12" />
-    </svg>
-  );
-}
-
-function IconTrash({ size = 14, color = "currentColor" }: { size?: number; color?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <polyline points="3 6 5 6 21 6" />
-      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-    </svg>
-  );
-}
-
-function IconRepeat({ size = 14, color = "currentColor" }: { size?: number; color?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <polyline points="17 1 21 5 17 9" />
-      <path d="M3 11V9a4 4 0 0 1 4-4h14" />
-      <polyline points="7 23 3 19 7 15" />
-      <path d="M21 13v2a4 4 0 0 1-4 4H3" />
-    </svg>
-  );
-}
-
-function IconStepBack({ size = 14, color = "currentColor" }: { size?: number; color?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <line x1="19" y1="5" x2="19" y2="19" />
-      <polygon points="19 12 5 19 5 5 19 12" />
-    </svg>
-  );
-}
-
-function IconStepForward({ size = 14, color = "currentColor" }: { size?: number; color?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <line x1="5" y1="5" x2="5" y2="19" />
-      <polygon points="5 12 19 19 19 5 5 12" />
     </svg>
   );
 }
@@ -297,7 +202,8 @@ type AnimationType =
   | "flip_reveal";
 
 type CursorStyle = "golden_dot" | "sparkle_star" | "pulsing_ring" | "none";
-type FontFamily = "amiri" | "cairo";
+type FontFamily = "uthmani" | "amiri" | "cairo";
+type Riwayah = "hafs" | "warsh";
 type AnimationSpeed = "fast" | "normal" | "smooth";
 type VerseScope = "canonical_complete" | "recited_flow";
 
@@ -312,6 +218,7 @@ type BgPreset =
   | "midnight_blue";
 
 type Customization = {
+  riwayah: Riwayah;
   displayScope: VerseScope; // "canonical_complete" (ayat compli) or "recited_flow"
   wordMode: WordMode;
   wordAnimation: AnimationType;
@@ -324,7 +231,7 @@ type Customization = {
   hideOnSilence: boolean;
   wordPosY: number; // 20 to 80 (percentage from top, default 50)
   boxStyle: BoxStyle;
-  boxWidthRatio: number; // 0.60 to 0.95 (default 0.84)
+  boxWidthRatio: number; // 0.50 to 0.95 (default 0.84)
   boxPaddingY: number; // 20 to 80 (default 36)
   boxOpacity: number; // 0.0 to 1.0 (default 0.75)
   boxBorderRadius: number; // 8 to 36 (default 22)
@@ -614,7 +521,6 @@ export default function QuranVideoPage() {
 
   // Synced audio & VAD state
   const [syncedData, setSyncedData] = React.useState<SyncedData | null>(null);
-  const [isLoadingAudio, setIsLoadingAudio] = React.useState(false);
 
   // Interactive Live Preview state
   const [isPlaying, setIsPlaying] = React.useState(false);
@@ -627,21 +533,22 @@ export default function QuranVideoPage() {
 
   // Customization
   const [customization, setCustomization] = React.useState<Customization>({
+    riwayah: "hafs",
     displayScope: "canonical_complete",
-    wordMode: "one_by_one",
+    wordMode: "phrase",
     wordAnimation: "typewriter",
     cursorStyle: "golden_dot",
-    fontFamily: "amiri",
+    fontFamily: "uthmani",
     animationSpeed: "normal",
     showRepetitionBadge: true,
     holdMaddVowels: true,
     wordsPerStanza: 7,
     hideOnSilence: false,
-    wordPosY: 50, // Center
+    wordPosY: 52, // Center
     boxStyle: "glass",
     boxWidthRatio: 0.84,
-    boxPaddingY: 36,
-    boxOpacity: 0.75,
+    boxPaddingY: 34,
+    boxOpacity: 0.72,
     boxBorderRadius: 22,
     syncOffsetSec: 0,
     bgType: "preset_image",
@@ -651,26 +558,19 @@ export default function QuranVideoPage() {
     customColor1: "#070B18",
     customColor2: "#141E33",
     selectedAudioSource: "original",
-    fontSize: 68,
+    fontSize: 64,
     glowColor: "rgba(235, 185, 75, 0.95)",
-    showTranslation: true,
+    showTranslation: false,
     showAyahInfo: true,
     showWaveform: true,
     showBismillah: true,
     aspect: "9:16",
   });
 
-  const [loopRange, setLoopRange] = React.useState<{ start: number; end: number } | null>(null);
-  // Mirrored in a ref so the audio listeners keep working with a stable effect
-  // dependency list while still seeing the current loop.
-  const loopRangeRef = React.useRef<{ start: number; end: number } | null>(null);
-  React.useEffect(() => {
-    loopRangeRef.current = loopRange;
-  }, [loopRange]);
+  const [designerTab, setDesignerTab] = React.useState<"quran" | "cadre" | "style" | "scene">("quran");
+  const [isDraggingCadre, setIsDraggingCadre] = React.useState(false);
 
-  const [activeTab, setActiveTab] = React.useState<"words" | "anim" | "box" | "bg" | "audio" | "style">("words");
-  const [activeMobileSheet, setActiveMobileSheet] = React.useState<null | "captions" | "audio" | "style" | "canvas" | "tajweed">(null);
-  const [selectedWordIdx, setSelectedWordIdx] = React.useState<number | null>(0);
+  const loopRangeRef = React.useRef<{ start: number; end: number } | null>(null);
 
   // Refs
   const recorderRef = React.useRef<MediaRecorder | null>(null);
@@ -971,15 +871,25 @@ export default function QuranVideoPage() {
 
   /* ------------------------------------------- QUICK AYAH CORRECTION */
 
-  const loadCorrectedAyah = async (surahNum: number, fromAyahNum: number, toAyahNum: number) => {
+  const loadCorrectedAyah = async (
+    surahNum: number,
+    fromAyahNum: number,
+    toAyahNum: number,
+    targetRiwayah?: Riwayah,
+  ) => {
     setError(null);
     setStage("processing");
     setProgress(40);
-    setStatusMessage("تحديث الآيات الكريمة وإعادة المزامنة...");
+    const activeRiwayah = targetRiwayah || customization.riwayah || "hafs";
+    setStatusMessage(
+      `جلب الآيات الكريمة برواية ${activeRiwayah === "warsh" ? "ورش عن نافع" : "حفص عن عاصم"}...`,
+    );
 
     try {
       const surahMeta = ALL_SURAHS.find((s) => s.number === surahNum);
-      const res = await fetch(`/api/quran?action=surah_verses&surah=${surahNum}&from=${fromAyahNum}&to=${toAyahNum}`);
+      const res = await fetch(
+        `/api/quran?action=surah_verses&surah=${surahNum}&from=${fromAyahNum}&to=${toAyahNum}&riwayah=${activeRiwayah}`,
+      );
       if (!res.ok) throw new Error("تعذر جلب الآيات المحددة");
 
       const data = await res.json();
@@ -1054,6 +964,9 @@ export default function QuranVideoPage() {
       setEditSurah(surahNum);
       setEditFromAyah(fromAyahNum);
       setEditToAyah(toAyahNum);
+      if (targetRiwayah) {
+        setCustomization((prev) => ({ ...prev, riwayah: targetRiwayah }));
+      }
 
       // Rebuild sync using existing audio buffer or rendered reciter buffer
       await buildSyncedData(
@@ -1070,6 +983,19 @@ export default function QuranVideoPage() {
       console.error(err);
       setError("تعذر تحديث الآيات: " + String(err));
       setStage((prev) => (prev === "processing" ? (result ? "detected" : "idle") : prev));
+    }
+  };
+
+  const handleRiwayahChange = async (targetRiwayah: Riwayah) => {
+    if (customization.riwayah === targetRiwayah) return;
+    setCustomization((prev) => ({ ...prev, riwayah: targetRiwayah }));
+    if (result) {
+      await loadCorrectedAyah(
+        result.surah,
+        result.fromAyah || result.ayah,
+        result.toAyah || result.ayah,
+        targetRiwayah,
+      );
     }
   };
 
@@ -1098,7 +1024,6 @@ export default function QuranVideoPage() {
     audioBlobOrNull?: Blob | null,
     alreadyDecodedBuffer?: AudioBuffer | null,
   ) => {
-    setIsLoadingAudio(true);
     try {
       let decoded = alreadyDecodedBuffer ?? null;
       if (!decoded) {
@@ -1197,83 +1122,6 @@ export default function QuranVideoPage() {
         audioBuffer: null,
         audioUrl,
       });
-    } finally {
-      setIsLoadingAudio(false);
-    }
-  };
-
-  /* ------------------------------------------------- RECITER CHANGE */
-
-  const handleReciterChange = async (reciterId: number | "original") => {
-    if (!result) return;
-    setCustomization((prev) => ({ ...prev, selectedAudioSource: reciterId }));
-
-    if (reciterId === "original") {
-      if (originalAudioUrl) {
-        await buildSyncedData(result, originalAudioUrl, originalAudioBlob);
-      }
-    } else {
-      // Whole selected range, not just its first ayah.
-      const fromA = result.fromAyah || result.ayah;
-      const toA = result.toAyah || result.fromAyah || result.ayah;
-      const track = await buildReciterTrack(
-        result.surah,
-        fromA,
-        toA,
-        reciterId,
-      );
-      if (track) {
-        if (reciterTrackUrlRef.current && reciterTrackUrlRef.current !== track.url) {
-          URL.revokeObjectURL(reciterTrackUrlRef.current);
-        }
-        reciterTrackUrlRef.current = track.url;
-      }
-
-      // Collect words with ayah mapping for the whole passage
-      const piecesWithAyah: { text: string; ayah: number }[] = [];
-      if (result.ayahs && result.ayahs.length > 0) {
-        for (const a of result.ayahs) {
-          const ws = (a.text || (a as { uthmani?: string }).uthmani || "").split(/\s+/).filter(Boolean);
-          for (const w of ws) {
-            piecesWithAyah.push({ text: w, ayah: a.ayah });
-          }
-        }
-      } else {
-        const pieces = result.uthmani.split(/\s+/).filter(Boolean);
-        for (const p of pieces) {
-          piecesWithAyah.push({ text: p, ayah: result.ayah });
-        }
-      }
-
-      let reciterWords = result.words;
-      if (track?.spans && track.spans.length > 0 && piecesWithAyah.length > 0) {
-        reciterWords = await fetchReciterWordSegments(
-          result.surah,
-          fromA,
-          toA,
-          reciterId,
-          track.spans,
-          piecesWithAyah,
-        );
-      }
-
-      await buildSyncedData(
-        {
-          ...result,
-          words: reciterWords,
-          durationSec: track?.duration ?? result.durationSec,
-          audioUrl: track?.url ?? getReciterAudioUrl(result.surah, fromA, reciterId),
-        },
-        track?.url ?? getReciterAudioUrl(result.surah, fromA, reciterId),
-        track?.blob ?? null,
-        track?.buffer ?? null,
-      );
-    }
-
-    if (previewAudioRef.current) {
-      previewAudioRef.current.currentTime = 0;
-      setCurrentTime(0);
-      setIsPlaying(false);
     }
   };
 
@@ -1349,6 +1197,7 @@ export default function QuranVideoPage() {
             customVideo: customVideoElRef.current,
             uploadedVideo: uploadedVideoElRef.current,
           },
+          false,
         );
       }
       animId = requestAnimationFrame(render);
@@ -1399,794 +1248,36 @@ export default function QuranVideoPage() {
     seekTo(Number(e.target.value));
   };
 
-  /**
-   * Loudness envelope for the timeline track: the real analysed frames when we
-   * have them, so the waveform shows where the voice actually is.
-   */
-  const timelineEnvelope = React.useMemo(() => {
-    const frames = syncedData?.analysis?.frames;
-    if (!frames || frames.length === 0) return undefined;
-    const target = 320;
-    const stride = Math.max(1, Math.floor(frames.length / target));
-    const peak = Math.max(0.0001, syncedData?.analysis?.peakRms ?? 0.0001);
-    const buckets: number[] = [];
-    for (let i = 0; i < frames.length; i += stride) {
-      let local = 0;
-      for (let j = i; j < Math.min(frames.length, i + stride); j += 1) {
-        local = Math.max(local, frames[j]?.rms ?? 0);
-      }
-      buckets.push(Math.min(1, local / peak));
-    }
-    return buckets;
-  }, [syncedData]);
+  /* ------------------------------------------- INTERACTIVE CADRE DRAGGING */
 
-  /* ---------------------------------------------------- WORD TIMING & REPETITIONS */
-
-  const playWordSlice = React.useCallback((start: number, end: number) => {
-    seekTo(start);
-    const audio = previewAudioRef.current;
-    if (!audio) return;
-    audio.currentTime = start;
-    audio.play().then(() => {
-      setIsPlaying(true);
-      const durationMs = Math.max(250, (end - start) * 1000);
-      setTimeout(() => {
-        audio.pause();
-        setIsPlaying(false);
-      }, durationMs);
-    }).catch(() => {});
-  }, [seekTo]);
-
-  const handleNudgeWord = React.useCallback((index: number, deltaStart: number, deltaEnd: number) => {
-    if (!syncedData) return;
-    const newWords = [...syncedData.words];
-    const target = newWords[index];
-    if (!target) return;
-
-    const newStart = Math.max(0, Number((target.start + deltaStart).toFixed(3)));
-    let newEnd = Math.max(newStart + 0.1, Number((target.end + deltaEnd).toFixed(3)));
-    if (newEnd > syncedData.duration) newEnd = syncedData.duration;
-
-    newWords[index] = {
-      ...target,
-      start: newStart,
-      end: newEnd,
-    };
-
-    newWords.sort((a, b) => a.start - b.start);
-    const speechRuns = newWords.map((w) => ({ start: w.start, end: w.end }));
-
-    setSyncedData({
-      ...syncedData,
-      words: newWords,
-      speechRuns,
-    });
-    seekTo(newStart);
-  }, [syncedData, seekTo]);
-
-  const handleSetWordBoundary = React.useCallback((index: number, edge: "start" | "end") => {
-    if (!syncedData) return;
-    const newWords = [...syncedData.words];
-    const target = newWords[index];
-    if (!target) return;
-
-    const cur = Number(currentTime.toFixed(3));
-    if (edge === "start") {
-      const newStart = Math.min(cur, target.end - 0.1);
-      newWords[index] = { ...target, start: Math.max(0, newStart) };
-    } else {
-      const newEnd = Math.max(cur, target.start + 0.1);
-      newWords[index] = { ...target, end: Math.min(syncedData.duration, newEnd) };
-    }
-
-    newWords.sort((a, b) => a.start - b.start);
-    const speechRuns = newWords.map((w) => ({ start: w.start, end: w.end }));
-
-    setSyncedData({
-      ...syncedData,
-      words: newWords,
-      speechRuns,
-    });
-  }, [syncedData, currentTime]);
-
-  const handleDuplicateWord = React.useCallback((index: number) => {
-    if (!syncedData) return;
-    const target = syncedData.words[index];
-    if (!target) return;
-
-    const dur = Math.max(0.2, target.end - target.start);
-    const duplicated = {
-      ...target,
-      start: Number((target.end + 0.05).toFixed(3)),
-      end: Number((target.end + 0.05 + dur).toFixed(3)),
-    };
-
-    const newWords = [...syncedData.words];
-    newWords.splice(index + 1, 0, duplicated);
-    newWords.sort((a, b) => a.start - b.start);
-
-    const speechRuns = newWords.map((w) => ({ start: w.start, end: w.end }));
-    setSyncedData({
-      ...syncedData,
-      words: newWords,
-      speechRuns,
-    });
-    setSelectedWordIdx(index + 1);
-    seekTo(duplicated.start);
-  }, [syncedData, seekTo]);
-
-  const handleDeleteWord = React.useCallback((index: number) => {
-    if (!syncedData || syncedData.words.length <= 1) return;
-    const newWords = syncedData.words.filter((_, i) => i !== index);
-    const speechRuns = newWords.map((w) => ({ start: w.start, end: w.end }));
-    setSyncedData({
-      ...syncedData,
-      words: newWords,
-      speechRuns,
-    });
-    setSelectedWordIdx(Math.max(0, index - 1));
-  }, [syncedData]);
-
-  const handleAdjustMaddLength = React.useCallback((index: number, extraSec: number) => {
-    if (!syncedData) return;
-    const newWords = [...syncedData.words];
-    const target = newWords[index];
-    if (!target) return;
-
-    const newEnd = Math.max(target.start + 0.2, Number((target.end + extraSec).toFixed(3)));
-    newWords[index] = {
-      ...target,
-      end: Math.min(syncedData.duration, newEnd),
-      hasMadd: true,
-    };
-
-    const speechRuns = newWords.map((w) => ({ start: w.start, end: w.end }));
-    setSyncedData({
-      ...syncedData,
-      words: newWords,
-      speechRuns,
-    });
-  }, [syncedData]);
-
-  const handleDuplicateAyah = React.useCallback((ayahNumber: number) => {
-    if (!syncedData) return;
-    const ayahWords = syncedData.words.filter((w) => w.ayah === ayahNumber);
-    if (ayahWords.length === 0) return;
-
-    const lastWord = ayahWords[ayahWords.length - 1]!;
-    const offset = Number((lastWord.end + 0.25 - ayahWords[0]!.start).toFixed(3));
-
-    const duplicatedAyahWords = ayahWords.map((w) => ({
-      ...w,
-      start: Number((w.start + offset).toFixed(3)),
-      end: Number((w.end + offset).toFixed(3)),
-    }));
-
-    const newWords = [...syncedData.words, ...duplicatedAyahWords];
-    newWords.sort((a, b) => a.start - b.start);
-    const speechRuns = newWords.map((w) => ({ start: w.start, end: w.end }));
-
-    setSyncedData({
-      ...syncedData,
-      words: newWords,
-      speechRuns,
-    });
-    seekTo(duplicatedAyahWords[0]!.start);
-  }, [syncedData, seekTo]);
-
-  const handleAcousticSnapWord = React.useCallback((index: number) => {
-    if (!syncedData) return;
-    const target = syncedData.words[index];
-    if (!target) return;
-
-    const snapped = snapWordToAcousticEnergy(
-      target,
-      syncedData.analysis?.frames ?? [],
-      syncedData.audioBuffer,
-      0.45
-    );
-
-    const newWords = [...syncedData.words];
-    newWords[index] = {
-      ...target,
-      start: snapped.start,
-      end: snapped.end,
-    };
-    newWords.sort((a, b) => a.start - b.start);
-    const speechRuns = newWords.map((w) => ({ start: w.start, end: w.end }));
-
-    setSyncedData({
-      ...syncedData,
-      words: newWords,
-      speechRuns,
-    });
-    seekTo(snapped.start);
-  }, [syncedData, seekTo]);
-
-  const handleAcousticSnapAll = React.useCallback(() => {
-    if (!syncedData || !syncedData.words.length) return;
-    const frames = syncedData.analysis?.frames ?? [];
-    const buf = syncedData.audioBuffer;
-    const newWords = syncedData.words.map((w) => {
-      const snapped = snapWordToAcousticEnergy(w, frames, buf, 0.45);
-      return {
-        ...w,
-        start: snapped.start,
-        end: snapped.end,
-      };
-    });
-    newWords.sort((a, b) => a.start - b.start);
-    const speechRuns = newWords.map((w) => ({ start: w.start, end: w.end }));
-
-    setSyncedData({
-      ...syncedData,
-      words: newWords,
-      speechRuns,
-    });
-  }, [syncedData]);
-
-  const toolChipBtn: React.CSSProperties = {
-    border: "1px solid rgba(255, 255, 255, 0.14)",
-    borderRadius: 8,
-    padding: "6px 10px",
-    fontSize: 12,
-    fontWeight: 600,
-    cursor: "pointer",
-    background: "rgba(255, 255, 255, 0.05)",
-    color: "#E8EEF7",
-    transition: "all 0.12s ease",
+  const handleCanvasPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = previewCanvasRef.current;
+    if (!canvas) return;
+    canvas.setPointerCapture(e.pointerId);
+    setIsDraggingCadre(true);
+    const rect = canvas.getBoundingClientRect();
+    const ratio = (e.clientY - rect.top) / rect.height;
+    const clamped = Math.max(20, Math.min(80, Math.round(ratio * 100)));
+    setCustomization((prev) => ({ ...prev, wordPosY: clamped }));
   };
 
-  const renderWordTimingInspector = () => {
-    if (!syncedData) return null;
-    const words = syncedData.words;
-    const selectedWord =
-      selectedWordIdx !== null && selectedWordIdx >= 0 && selectedWordIdx < words.length
-        ? words[selectedWordIdx]
-        : null;
+  const handleCanvasPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!isDraggingCadre) return;
+    const canvas = previewCanvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const ratio = (e.clientY - rect.top) / rect.height;
+    const clamped = Math.max(20, Math.min(80, Math.round(ratio * 100)));
+    setCustomization((prev) => ({ ...prev, wordPosY: clamped }));
+  };
 
-    // Group words by ayah
-    const ayahsMap = new Map<number, { text: string; idx: number; word: (typeof words)[0] }[]>();
-    words.forEach((w, idx) => {
-      const a = w.ayah ?? 1;
-      if (!ayahsMap.has(a)) ayahsMap.set(a, []);
-      ayahsMap.get(a)!.push({ text: w.text, idx, word: w });
-    });
-
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 16, direction: "rtl" }}>
-        {/* 1. Selected Word Inspector Card */}
-        {selectedWord && selectedWordIdx !== null ? (
-          <div
-            style={{
-              background: "rgba(18, 22, 32, 0.95)",
-              border: "1px solid rgba(255, 255, 255, 0.1)",
-              borderRadius: 16,
-              padding: "16px",
-              boxShadow: "0 10px 30px rgba(0, 0, 0, 0.45)",
-            }}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span
-                  style={{
-                    fontSize: 11,
-                    background: "rgba(212, 175, 55, 0.12)",
-                    color: "#E5C365",
-                    border: "1px solid rgba(212, 175, 55, 0.35)",
-                    padding: "3px 10px",
-                    borderRadius: 999,
-                    fontWeight: 700,
-                  }}
-                >
-                  الكلمة #{selectedWordIdx + 1}
-                </span>
-                <span style={{ fontSize: 12, color: "rgba(220,230,245,0.7)" }}>
-                  الآية {selectedWord.ayah}
-                </span>
-              </div>
-              <div style={{ display: "flex", gap: 6 }}>
-                <button
-                  type="button"
-                  onClick={() => playWordSlice(selectedWord.start, selectedWord.end)}
-                  style={{
-                    padding: "6px 12px",
-                    borderRadius: 8,
-                    fontSize: 12,
-                    fontWeight: 700,
-                    background: "rgba(255, 255, 255, 0.08)",
-                    border: "1px solid rgba(255, 255, 255, 0.15)",
-                    color: "#F1F5F9",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                  }}
-                >
-                  <IconPlay size={13} /> استماع
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDuplicateWord(selectedWordIdx)}
-                  style={{
-                    ...toolChipBtn,
-                    padding: "6px 10px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 4,
-                  }}
-                  title="تكرار الكلمة مباشرة بعد هذا الموضع"
-                >
-                  <IconPlus size={13} /> تكرار
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDeleteWord(selectedWordIdx)}
-                  style={{
-                    ...toolChipBtn,
-                    padding: "6px 10px",
-                    background: "rgba(239,68,68,0.12)",
-                    color: "#FCA5A5",
-                    border: "1px solid rgba(239,68,68,0.25)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                  title="حذف الكلمة"
-                >
-                  <IconTrash size={14} />
-                </button>
-              </div>
-            </div>
-
-            {/* Active Word Display */}
-            <div style={{ textAlign: "center", margin: "6px 0 12px" }}>
-              <span
-                style={{
-                  fontSize: 32,
-                  fontFamily: "'Amiri', serif",
-                  color: "#F5D77F",
-                  textShadow: "0 0 16px rgba(212, 175, 55, 0.35)",
-                }}
-              >
-                « {selectedWord.text} »
-              </span>
-            </div>
-
-            {/* High-Precision Acoustic Align Button for Selected Word */}
-            <div style={{ marginBottom: 12 }}>
-              <button
-                type="button"
-                onClick={() => handleAcousticSnapWord(selectedWordIdx)}
-                style={{
-                  ...primaryBtn,
-                  padding: "9px 14px",
-                  fontSize: 12,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                }}
-                title="تحديد موضع البداية والنهاية الدقيق للكلمة من طاقة الصوت الأصلية"
-              >
-                <IconAcoustic size={15} color="#080B11" />
-                ضبط صوتي دقيق للكلمة من الصوت الأصلي (Acoustic Snap)
-              </button>
-            </div>
-
-            {/* Timing details pill */}
-            <div
-              className="force-ltr"
-              style={{
-                display: "flex",
-                justifyContent: "space-around",
-                background: "rgba(0,0,0,0.35)",
-                borderRadius: 10,
-                padding: "8px 12px",
-                marginBottom: 12,
-                fontSize: 12,
-                fontFamily: "monospace",
-              }}
-            >
-              <div>
-                <span style={{ color: "rgba(200,210,230,0.6)" }}>البداية: </span>
-                <span style={{ color: "#4D9BFF", fontWeight: 700 }}>{selectedWord.start.toFixed(2)}s</span>
-              </div>
-              <div>
-                <span style={{ color: "rgba(200,210,230,0.6)" }}>المدة: </span>
-                <span style={{ color: "#34D399", fontWeight: 700 }}>
-                  {(selectedWord.end - selectedWord.start).toFixed(2)}s
-                </span>
-              </div>
-              <div>
-                <span style={{ color: "rgba(200,210,230,0.6)" }}>النهاية: </span>
-                <span style={{ color: "#F472B6", fontWeight: 700 }}>{selectedWord.end.toFixed(2)}s</span>
-              </div>
-            </div>
-
-            {/* Timing Nudges & Snap Grid */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
-              {/* Start Edge Controls */}
-              <div
-                style={{
-                  background: "rgba(255,255,255,0.03)",
-                  padding: 10,
-                  borderRadius: 10,
-                  border: "1px solid rgba(255,255,255,0.06)",
-                }}
-              >
-                <div style={{ fontSize: 11, color: "rgba(200,210,230,0.7)", marginBottom: 6, fontWeight: 700 }}>
-                  توقيت بداية الكلمة:
-                </div>
-                <div style={{ display: "flex", gap: 4, marginBottom: 6 }}>
-                  <button
-                    type="button"
-                    onClick={() => handleNudgeWord(selectedWordIdx, -0.1, 0)}
-                    style={{ ...toolChipBtn, flex: 1, padding: "6px 2px", fontSize: 11 }}
-                  >
-                    -0.1s
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleNudgeWord(selectedWordIdx, +0.1, 0)}
-                    style={{ ...toolChipBtn, flex: 1, padding: "6px 2px", fontSize: 11 }}
-                  >
-                    +0.1s
-                  </button>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleSetWordBoundary(selectedWordIdx, "start")}
-                  style={{
-                    ...toolChipBtn,
-                    width: "100%",
-                    fontSize: 11,
-                    background: "rgba(212, 175, 55, 0.12)",
-                    color: "#E5C365",
-                    border: "1px solid rgba(212, 175, 55, 0.35)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 6,
-                  }}
-                  title="مطابقة بداية الكلمة مع موضع تشغيل الصوت الحالي"
-                >
-                  <IconTarget size={13} />
-                  ضبط عند المؤشر ({currentTime.toFixed(2)}s)
-                </button>
-              </div>
-
-              {/* End Edge Controls */}
-              <div
-                style={{
-                  background: "rgba(255,255,255,0.03)",
-                  padding: 10,
-                  borderRadius: 10,
-                  border: "1px solid rgba(255,255,255,0.06)",
-                }}
-              >
-                <div style={{ fontSize: 11, color: "rgba(200,210,230,0.7)", marginBottom: 6, fontWeight: 700 }}>
-                  توقيت نهاية الكلمة:
-                </div>
-                <div style={{ display: "flex", gap: 4, marginBottom: 6 }}>
-                  <button
-                    type="button"
-                    onClick={() => handleNudgeWord(selectedWordIdx, 0, -0.1)}
-                    style={{ ...toolChipBtn, flex: 1, padding: "6px 2px", fontSize: 11 }}
-                  >
-                    -0.1s
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleNudgeWord(selectedWordIdx, 0, +0.1)}
-                    style={{ ...toolChipBtn, flex: 1, padding: "6px 2px", fontSize: 11 }}
-                  >
-                    +0.1s
-                  </button>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleSetWordBoundary(selectedWordIdx, "end")}
-                  style={{
-                    ...toolChipBtn,
-                    width: "100%",
-                    fontSize: 11,
-                    background: "rgba(212, 175, 55, 0.12)",
-                    color: "#E5C365",
-                    border: "1px solid rgba(212, 175, 55, 0.35)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 6,
-                  }}
-                  title="مطابقة نهاية الكلمة مع موضع تشغيل الصوت الحالي"
-                >
-                  <IconTarget size={13} />
-                  ضبط عند المؤشر ({currentTime.toFixed(2)}s)
-                </button>
-              </div>
-            </div>
-
-            {/* Tajweed Madd Elongation controls */}
-            <div
-              style={{
-                background: "rgba(255,255,255,0.03)",
-                padding: 10,
-                borderRadius: 10,
-                border: "1px solid rgba(255,255,255,0.06)",
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                <span style={{ fontSize: 11, color: "rgba(200,210,230,0.8)", fontWeight: 700 }}>
-                  أحكام المد وطول الكلمة بالحركات:
-                </span>
-                <span style={{ fontSize: 11, color: "#F6AD55", fontWeight: 700 }}>
-                  {selectedWord.hasMadd
-                    ? selectedWord.maddHarakat
-                    ? `مد ${selectedWord.maddHarakat} حركات`
-                    : "مد متصل/لازم"
-                    : "مد طبيعي (حركتان)"}
-                </span>
-              </div>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                <button
-                  type="button"
-                  onClick={() => handleAdjustMaddLength(selectedWordIdx, 0.25)}
-                  style={{ ...toolChipBtn, flex: 1, fontSize: 11, padding: "5px" }}
-                >
-                  +حركة (0.25s)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleAdjustMaddLength(selectedWordIdx, 0.5)}
-                  style={{ ...toolChipBtn, flex: 1, fontSize: 11, padding: "5px" }}
-                >
-                  +حركتان (0.5s)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleAdjustMaddLength(selectedWordIdx, 1.0)}
-                  style={{ ...toolChipBtn, flex: 1, fontSize: 11, padding: "5px" }}
-                >
-                  +4 حركات (1.0s)
-                </button>
-              </div>
-            </div>
-
-            {/* Next / Prev Stepper */}
-            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12 }}>
-              <button
-                type="button"
-                onClick={() => {
-                  const prev = Math.max(0, selectedWordIdx - 1);
-                  setSelectedWordIdx(prev);
-                  seekTo(words[prev]!.start);
-                }}
-                disabled={selectedWordIdx <= 0}
-                style={{
-                  ...toolChipBtn,
-                  padding: "7px 14px",
-                  fontSize: 12,
-                  opacity: selectedWordIdx <= 0 ? 0.4 : 1,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                }}
-              >
-                <IconStepBack size={13} />
-                الكلمة السابقة
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const next = Math.min(words.length - 1, selectedWordIdx + 1);
-                  setSelectedWordIdx(next);
-                  seekTo(words[next]!.start);
-                }}
-                disabled={selectedWordIdx >= words.length - 1}
-                style={{
-                  ...toolChipBtn,
-                  padding: "7px 14px",
-                  fontSize: 12,
-                  opacity: selectedWordIdx >= words.length - 1 ? 0.4 : 1,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                }}
-              >
-                الكلمة التالية
-                <IconStepForward size={13} />
-              </button>
-            </div>
-          </div>
-        ) : null}
-
-        {/* 2. Ayahs and Word Pills List (with silence detection) */}
-        <div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, flexWrap: "wrap", gap: 8 }}>
-            <label style={{ fontSize: 13, fontWeight: 700, color: "#E5C365", margin: 0 }}>
-              قائمة الآيات والكلمات:
-            </label>
-            <button
-              type="button"
-              onClick={handleAcousticSnapAll}
-              style={{
-                ...ghostBtn,
-                padding: "6px 12px",
-                fontSize: 12,
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                borderColor: "rgba(212, 175, 55, 0.4)",
-                color: "#E5C365",
-              }}
-              title="محاذاة كامل الكلمات مع ذبذبات الطاقة الصوتية الأصلية تلقائياً"
-            >
-              <IconAcoustic size={14} />
-              ضبط صوتي تلقائي لكامل المقطع
-            </button>
-          </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {Array.from(ayahsMap.entries()).map(([ayahNum, ayahWordItems]) => {
-              const firstWord = ayahWordItems[0]?.word;
-              const lastWord = ayahWordItems[ayahWordItems.length - 1]?.word;
-              const ayahStart = firstWord?.start ?? 0;
-              const ayahEnd = lastWord?.end ?? 0;
-              const isLoopingThisAyah =
-                loopRange &&
-                Math.abs(loopRange.start - ayahStart) < 0.05 &&
-                Math.abs(loopRange.end - ayahEnd) < 0.05;
-
-              return (
-                <div
-                  key={ayahNum}
-                  style={{
-                    background: "rgba(255,255,255,0.02)",
-                    border: isLoopingThisAyah ? "1px solid rgba(212,175,55,0.6)" : "1px solid rgba(255,255,255,0.07)",
-                    borderRadius: 14,
-                    padding: "12px",
-                  }}
-                >
-                  {/* Ayah Header */}
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginBottom: 10,
-                      flexWrap: "wrap",
-                      gap: 6,
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: "#FFE885" }}>
-                        الآية {ayahNum}
-                      </span>
-                      <span className="force-ltr" style={{ fontSize: 11, color: "rgba(200,210,230,0.5)" }}>
-                        ({formatTime(ayahStart)} - {formatTime(ayahEnd)})
-                      </span>
-                    </div>
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (isLoopingThisAyah) {
-                            setLoopRange(null);
-                          } else {
-                            setLoopRange({ start: ayahStart, end: ayahEnd });
-                            seekTo(ayahStart);
-                          }
-                        }}
-                        style={{
-                          padding: "5px 10px",
-                          borderRadius: 6,
-                          fontSize: 11,
-                          fontWeight: 600,
-                          background: isLoopingThisAyah ? "rgba(212, 175, 55, 0.2)" : "rgba(255,255,255,0.06)",
-                          color: isLoopingThisAyah ? "#E5C365" : "#E8EEF7",
-                          border: `1px solid ${isLoopingThisAyah ? "rgba(212, 175, 55, 0.5)" : "rgba(255,255,255,0.1)"}`,
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 5,
-                        }}
-                      >
-                        <IconRepeat size={12} />
-                        {isLoopingThisAyah ? "إلغاء التكرار" : "تكرار الآية"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDuplicateAyah(ayahNum)}
-                        style={{
-                          padding: "5px 10px",
-                          borderRadius: 6,
-                          fontSize: 11,
-                          fontWeight: 600,
-                          background: "rgba(255,255,255,0.06)",
-                          color: "#E8EEF7",
-                          border: "1px solid rgba(255,255,255,0.1)",
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 5,
-                        }}
-                        title="مضاعفة كلمات الآية"
-                      >
-                        <IconPlus size={12} />
-                        مضاعفة الآية
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Words Flow */}
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
-                    {ayahWordItems.map(({ text, idx, word }, itemIdx) => {
-                      const isSelected = selectedWordIdx === idx;
-                      const nextItem = ayahWordItems[itemIdx + 1];
-                      const pauseSec = nextItem ? Number((nextItem.word.start - word.end).toFixed(2)) : 0;
-
-                      return (
-                        <React.Fragment key={`${word.start}-${idx}`}>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedWordIdx(idx);
-                              seekTo(word.start);
-                            }}
-                            style={{
-                              padding: "6px 10px",
-                              borderRadius: 8,
-                              fontSize: 14,
-                              fontFamily: "'Amiri', serif",
-                              cursor: "pointer",
-                              transition: "all 0.15s ease",
-                              border: isSelected ? "2px solid #FFD700" : "1px solid rgba(255,255,255,0.12)",
-                              background: isSelected
-                                ? "linear-gradient(135deg, rgba(255,184,0,0.3), rgba(224,135,0,0.2))"
-                                : "rgba(255,255,255,0.05)",
-                              color: isSelected ? "#FFE885" : "#E8EEF7",
-                              boxShadow: isSelected ? "0 0 12px rgba(255,215,0,0.4)" : "none",
-                              transform: isSelected ? "scale(1.05)" : "none",
-                            }}
-                          >
-                            <span>{text}</span>
-                            {word.hasMadd && (
-                              <span style={{ fontSize: 10, color: "#F6AD55", marginRight: 4 }}>
-                                ٓ
-                              </span>
-                            )}
-                          </button>
-
-                          {/* Inline Silence / Pause indicator between words */}
-                          {pauseSec >= 0.25 ? (
-                            <span
-                              className="force-ltr"
-                              title={`سكت ووقف لمدة ${pauseSec} ثانية`}
-                              style={{
-                                fontSize: 10,
-                                padding: "2px 6px",
-                                borderRadius: 4,
-                                background: "rgba(255,255,255,0.06)",
-                                color: "rgba(200,210,230,0.5)",
-                                border: "1px dashed rgba(255,255,255,0.15)",
-                                whiteSpace: "nowrap",
-                              }}
-                            >
-                              ⏸️ {pauseSec}s
-                            </span>
-                          ) : null}
-                        </React.Fragment>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    );
+  const handleCanvasPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (isDraggingCadre) {
+      setIsDraggingCadre(false);
+      try {
+        previewCanvasRef.current?.releasePointerCapture(e.pointerId);
+      } catch {}
+    }
   };
 
   /* ---------------------------------------------------- EXPORT VIDEO */
@@ -2284,6 +1375,7 @@ export default function QuranVideoPage() {
               customVideo: customVideoElRef.current,
               uploadedVideo: uploadedVideoElRef.current,
             },
+            true,
           );
 
           requestAnimationFrame(renderLoop);
@@ -2358,45 +1450,17 @@ export default function QuranVideoPage() {
       {/* Hidden export canvas */}
       <canvas ref={exportCanvasRef} style={{ display: "none" }} />
 
-      {/* Responsive mobile & studio styles */}
+      {/* Responsive styles */}
       <style>{`
         @keyframes pulse {
           0%, 100% { opacity: 1; transform: scale(1); }
           50% { opacity: 0.6; transform: scale(1.15); }
-        }
-        @keyframes sheetSlideUp {
-          from { transform: translateY(100%); }
-          to { transform: translateY(0); }
         }
         .quran-studio-grid {
           display: grid;
           grid-template-columns: minmax(360px, 440px) minmax(0, 1fr);
           gap: 24px;
           align-items: start;
-        }
-        .desktop-only-panel {
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-        }
-        .mobile-bottom-dock {
-          display: none;
-        }
-        .mobile-bottom-sheet-backdrop {
-          display: none;
-        }
-        .mobile-bottom-sheet {
-          display: none;
-        }
-        .tab-scroll-header {
-          display: flex;
-          background: rgba(255, 255, 255, 0.04);
-          padding: 4px;
-          border-radius: 12px;
-          margin-bottom: 20px;
-          direction: rtl;
-          gap: 4px;
-          flex-wrap: wrap;
         }
         .edit-ayah-modal-grid {
           display: grid;
@@ -2405,108 +1469,23 @@ export default function QuranVideoPage() {
           align-items: end;
         }
         @media (max-width: 860px) {
-          .desktop-only-panel {
-            display: none !important;
-          }
           .quran-studio-grid {
             grid-template-columns: 1fr !important;
-            gap: 14px !important;
+            gap: 16px !important;
             width: 100% !important;
             overflow-x: hidden !important;
-            padding-bottom: 84px !important;
           }
           .canvas-frame-container {
-            max-height: 33vh !important;
+            max-height: 52vh !important;
             width: auto !important;
             display: flex !important;
             justify-content: center !important;
             align-items: center !important;
           }
           .canvas-frame-container canvas {
-            max-height: 33vh !important;
+            max-height: 52vh !important;
             width: auto !important;
             margin: 0 auto !important;
-          }
-          .mobile-bottom-dock {
-            display: flex !important;
-            position: fixed !important;
-            bottom: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            height: 60px !important;
-            background: rgba(11, 13, 19, 0.98) !important;
-            backdrop-filter: blur(20px) !important;
-            -webkit-backdrop-filter: blur(20px) !important;
-            border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
-            z-index: 95 !important;
-            padding: 4px 6px !important;
-            align-items: center !important;
-            justify-content: space-around !important;
-            box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.9) !important;
-          }
-          .mobile-dock-btn {
-            display: flex !important;
-            flex-direction: column !important;
-            align-items: center !important;
-            justify-content: center !important;
-            gap: 2px !important;
-            background: transparent !important;
-            border: none !important;
-            color: rgba(220, 230, 245, 0.72) !important;
-            font-size: 11px !important;
-            font-weight: 600 !important;
-            padding: 5px 8px !important;
-            border-radius: 10px !important;
-            cursor: pointer !important;
-            transition: all 0.15s ease !important;
-          }
-          .mobile-dock-btn.active {
-            color: #E5C365 !important;
-            background: rgba(212, 175, 55, 0.14) !important;
-          }
-          .mobile-bottom-sheet-backdrop {
-            display: block !important;
-            position: fixed !important;
-            inset: 0 !important;
-            background: rgba(0, 0, 0, 0.6) !important;
-            backdrop-filter: blur(3px) !important;
-            -webkit-backdrop-filter: blur(3px) !important;
-            z-index: 98 !important;
-          }
-          .mobile-bottom-sheet {
-            display: flex !important;
-            position: fixed !important;
-            bottom: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            max-height: 62vh !important;
-            height: 62vh !important;
-            background: rgba(13, 16, 24, 0.98) !important;
-            backdrop-filter: blur(24px) !important;
-            -webkit-backdrop-filter: blur(24px) !important;
-            border-top: 1px solid rgba(255, 255, 255, 0.12) !important;
-            border-radius: 22px 22px 0 0 !important;
-            z-index: 99 !important;
-            flex-direction: column !important;
-            box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.9) !important;
-            animation: sheetSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
-          }
-          .tab-scroll-header {
-            flex-wrap: nowrap !important;
-            overflow-x: auto !important;
-            scrollbar-width: none !important;
-            -webkit-overflow-scrolling: touch !important;
-            padding: 6px 4px !important;
-            gap: 6px !important;
-          }
-          .tab-scroll-header::-webkit-scrollbar {
-            display: none !important;
-          }
-          .tab-scroll-header button {
-            flex: 0 0 auto !important;
-            min-width: 88px !important;
-            white-space: nowrap !important;
-            padding: 10px 12px !important;
           }
           .edit-ayah-modal-grid {
             grid-template-columns: 1fr 1fr !important;
@@ -2519,24 +1498,24 @@ export default function QuranVideoPage() {
         }
       `}</style>
 
-      {/* Pro Studio Header */}
-      <header style={{ textAlign: "center", padding: "36px 0 16px", maxWidth: 840, width: "100%" }}>
+      {/* Quran Verse Designer Header */}
+      <header style={{ textAlign: "center", padding: "28px 0 16px", maxWidth: 840, width: "100%" }}>
         <h1
           style={{
-            fontSize: "clamp(24px, 4.5vw, 38px)",
+            fontSize: "clamp(24px, 4.5vw, 36px)",
             fontWeight: 800,
-            background: "linear-gradient(135deg, #E6CA65 0%, #FFF2B2 45%, #2B7FFF 100%)",
+            background: "linear-gradient(135deg, #E6CA65 0%, #FFF2B2 45%, #D4AF37 100%)",
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
-            margin: "0 0 10px",
+            margin: "0 0 8px",
             direction: "rtl",
             letterSpacing: "-0.02em",
           }}
         >
-          استوديو المونتاج القرآني الاحترافي
+          مُصمّم الآيات القرآنية
         </h1>
         <p style={{ color: "rgba(205,218,240,0.72)", fontSize: 14, lineHeight: 1.7, direction: "rtl", margin: 0 }}>
-          تصميم ومونتاج فيديوهات الآيات الكريمة بدقة 9:16 للريلز والتيك توك • مزامنة صوتية دقيقة وإظهار الكلمات تباعاً
+          عرض ومزامنة الآيات القرآنية الكريمة بدقة على خلفيات ومقاطع فيديو احترافية
         </p>
       </header>
 
@@ -3054,18 +2033,14 @@ export default function QuranVideoPage() {
 
             {/* Studio Workspace: Two Columns (Preview on Left / Controls on Right) */}
             <div className="quran-studio-grid">
-
-              {/* ---------------- LEFT: LIVE INTERACTIVE PREVIEW ---------------- */}
-              <div
-                style={{ display: "flex", flexDirection: "column", gap: 16 }}
-              >
+              {/* ---------------- LEFT: LIVE INTERACTIVE PREVIEW & PLAYER ---------------- */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                 <Card>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, direction: "rtl" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                      <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#8AB9FF" }}>
-                        شاشة المعاينة الحية ({customization.aspect})
+                      <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#FFE885" }}>
+                        شاشة المعاينة ({customization.aspect})
                       </h3>
-                      {/* Aspect switcher: preview and export both follow it. */}
                       <div
                         role="group"
                         aria-label="قياس الفيديو"
@@ -3113,7 +2088,7 @@ export default function QuranVideoPage() {
                     </span>
                   </div>
 
-                  {/* Canvas frame — its shape is the chosen aspect */}
+                  {/* Canvas frame — tactile pointer drag to adjust Y-position */}
                   <div
                     className="canvas-frame-container"
                     style={{
@@ -3126,17 +2101,22 @@ export default function QuranVideoPage() {
                       overflow: "hidden",
                       boxShadow: "0 16px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.1)",
                       background: "#05070D",
+                      cursor: isDraggingCadre ? "grabbing" : "grab",
                     }}
                   >
                     <canvas
                       ref={previewCanvasRef}
                       width={ASPECTS[customization.aspect].w}
                       height={ASPECTS[customization.aspect].h}
+                      onPointerDown={handleCanvasPointerDown}
+                      onPointerMove={handleCanvasPointerMove}
+                      onPointerUp={handleCanvasPointerUp}
                       style={{
                         width: "100%",
                         height: "100%",
                         objectFit: "contain",
                         display: "block",
+                        touchAction: "none",
                       }}
                     />
 
@@ -3157,8 +2137,8 @@ export default function QuranVideoPage() {
                       >
                         <div
                           style={{
-                            width: 64,
-                            height: 64,
+                            width: 60,
+                            height: 60,
                             borderRadius: "50%",
                             background: "linear-gradient(135deg, #E5C365, #D4AF37)",
                             display: "flex",
@@ -3167,14 +2147,18 @@ export default function QuranVideoPage() {
                             boxShadow: "0 8px 24px rgba(212,175,55,0.35)",
                           }}
                         >
-                          <IconPlay size={28} color="#080B11" />
+                          <IconPlay size={26} color="#080B11" />
                         </div>
                       </div>
                     )}
                   </div>
 
+                  <div style={{ fontSize: 11, color: "rgba(220,230,245,0.45)", textAlign: "center", marginTop: 8, direction: "rtl" }}>
+                    اسحب الشاشة بيدك لتحريك موضع الآيات (موضع Y)
+                  </div>
+
                   {/* Player Controls Bar */}
-                  <div style={{ marginTop: 16 }}>
+                  <div style={{ marginTop: 14 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
                       <span style={{ fontSize: 12, color: "rgba(200,210,230,0.6)", minWidth: 40 }}>
                         {formatTime(currentTime)}
@@ -3182,7 +2166,7 @@ export default function QuranVideoPage() {
                       <input
                         type="range"
                         min="0"
-                        max={syncedData.duration || 1}
+                        max={syncedData?.duration || 1}
                         step="0.05"
                         value={currentTime}
                         onChange={handleSeek}
@@ -3193,7 +2177,7 @@ export default function QuranVideoPage() {
                         }}
                       />
                       <span style={{ fontSize: 12, color: "rgba(200,210,230,0.6)", minWidth: 40, textAlign: "right" }}>
-                        {formatTime(syncedData.duration)}
+                        {formatTime(syncedData?.duration || 0)}
                       </span>
                     </div>
 
@@ -3259,133 +2243,15 @@ export default function QuranVideoPage() {
                     </div>
                   </div>
 
-                  {/* CapCut-style word timeline: click a word to jump to it. */}
-                  {syncedData ? (
-                    <div style={{ marginTop: 18 }}>
-                      <StudioTimeline
-                        words={(syncedData.words ?? []) as TimelineWord[]}
-                        duration={syncedData.duration}
-                        currentTime={currentTime}
-                        isPlaying={isPlaying}
-                        loop={loopRange}
-                        envelope={timelineEnvelope}
-                        selectedWordIndex={selectedWordIdx}
-                        onSeek={seekTo}
-                        onTogglePlay={togglePlayPreview}
-                        onLoopChange={(next: TimelineLoop) => setLoopRange(next)}
-                        onSelectWord={(idx: number) => setSelectedWordIdx(idx)}
-                      />
-
-                      {selectedWordIdx !== null && syncedData.words[selectedWordIdx] && (
-                        <div
-                          style={{
-                            marginTop: 12,
-                            padding: "10px 14px",
-                            borderRadius: 12,
-                            background: "rgba(18, 22, 32, 0.95)",
-                            border: "1px solid rgba(255, 255, 255, 0.1)",
-                            display: "flex",
-                            flexWrap: "wrap",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            gap: 10,
-                            direction: "rtl",
-                          }}
-                        >
-                          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                            <span style={{ fontSize: 11, color: "rgba(220,230,245,0.6)" }}>الكلمة المحددة:</span>
-                            <span style={{ fontSize: 16, fontFamily: "'Amiri', serif", color: "#F5D77F", fontWeight: 700 }}>
-                              « {syncedData.words[selectedWordIdx].text} »
-                            </span>
-                            <span className="force-ltr" style={{ fontSize: 11, color: "rgba(220,230,245,0.6)" }}>
-                              ({syncedData.words[selectedWordIdx].start.toFixed(2)}s - {syncedData.words[selectedWordIdx].end.toFixed(2)}s)
-                            </span>
-                          </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                            <button
-                              type="button"
-                              onClick={() => handleAcousticSnapWord(selectedWordIdx)}
-                              style={{
-                                ...ghostBtn,
-                                fontSize: 11,
-                                padding: "5px 10px",
-                                color: "#E5C365",
-                                borderColor: "rgba(212, 175, 55, 0.4)",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 4,
-                              }}
-                              title="ضبط صوتي فوري للكلمة من تردد الصوت الأصلي"
-                            >
-                              <IconAcoustic size={13} />
-                              ضبط صوتي
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleSetWordBoundary(selectedWordIdx, "start")}
-                              style={{
-                                ...ghostBtn,
-                                fontSize: 11,
-                                padding: "5px 10px",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 4,
-                              }}
-                              title="مطابقة بداية الكلمة مع المؤشر الحالي"
-                            >
-                              <IconTarget size={13} />
-                              بداية هنا
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const w = selectedWordIdx !== null ? syncedData.words[selectedWordIdx] : undefined;
-                                if (w) playWordSlice(w.start, w.end);
-                              }}
-                              style={{
-                                ...ghostBtn,
-                                fontSize: 11,
-                                padding: "5px 10px",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 4,
-                              }}
-                              title="استماع لمقطع الكلمة"
-                            >
-                              <IconPlay size={12} />
-                              استماع
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setActiveMobileSheet("captions")}
-                              style={{
-                                ...primaryBtn,
-                                fontSize: 11,
-                                padding: "5px 12px",
-                                width: "auto",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 4,
-                              }}
-                            >
-                              <IconSliders size={13} color="#080B11" />
-                              تحرير كامل
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ) : null}
-
                   {/* Export Button */}
-                  <div style={{ marginTop: 20 }}>
+                  <div style={{ marginTop: 18 }}>
                     <button
                       id="exportVideoBtn"
                       onClick={exportVideo}
                       disabled={stage === "exporting"}
                       style={{
                         ...primaryBtn,
-                        padding: "15px 22px",
+                        padding: "14px 20px",
                         fontSize: 15,
                         display: "flex",
                         alignItems: "center",
@@ -3404,538 +2270,356 @@ export default function QuranVideoPage() {
                 </Card>
               </div>
 
-              {/* ---------------- RIGHT: PRO MONTAGE STUDIO CONTROLS (DESKTOP) ---------------- */}
-              <div
-                className="desktop-only-panel"
-                style={{ display: "flex", flexDirection: "column", gap: 16 }}
-              >
+              {/* ---------------- RIGHT: 4-SECTION DESIGNER PANEL ---------------- */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                 <Card>
-                  {/* Pro Horizontal Scrolling Tools Ribbon */}
-                  <div className="tab-scroll-header">
+                  {/* 4 Professional Designer Tabs */}
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(4, 1fr)",
+                      gap: 6,
+                      background: "rgba(255, 255, 255, 0.03)",
+                      padding: 5,
+                      borderRadius: 14,
+                      border: "1px solid rgba(255, 255, 255, 0.08)",
+                      direction: "rtl",
+                      marginBottom: 18,
+                    }}
+                  >
                     {[
-                      { id: "words", label: "النصوص والآيات" },
-                      { id: "box", label: "الموضع والتموضع" },
-                      { id: "anim", label: "حركة الكلمات" },
-                      { id: "bg", label: "خلفية المشهد" },
-                      { id: "style", label: "الخط والمظهر" },
-                      { id: "audio", label: "مزامنة الصوت" },
-                    ].map((tab) => (
-                      <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                        style={{
-                          flex: "1 0 auto",
-                          minWidth: 92,
-                          padding: "10px 14px",
-                          borderRadius: 10,
-                          border: activeTab === tab.id ? "1px solid rgba(212, 175, 55, 0.6)" : "1px solid rgba(255, 255, 255, 0.05)",
-                          fontSize: 12,
-                          fontWeight: 700,
-                          cursor: "pointer",
-                          transition: "all 0.15s ease",
-                          background: activeTab === tab.id ? "linear-gradient(135deg, #E5C365, #D4AF37)" : "rgba(255, 255, 255, 0.02)",
-                          color: activeTab === tab.id ? "#080B11" : "rgba(220,230,245,0.78)",
-                          boxShadow: activeTab === tab.id ? "0 4px 14px rgba(212,175,55,0.25)" : "none",
-                        }}
-                      >
-                        {tab.label}
-                      </button>
-                    ))}
+                      { id: "quran", label: "الآيات والرواية", icon: <IconQuran size={16} /> },
+                      { id: "cadre", label: "إطار النص", icon: <IconCanvas size={16} /> },
+                      { id: "style", label: "الخط والحركة", icon: <IconDesign size={16} /> },
+                      { id: "scene", label: "المشهد والخلفية", icon: <IconSparkles size={16} /> },
+                    ].map((tab) => {
+                      const active = designerTab === tab.id;
+                      return (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => setDesignerTab(tab.id as typeof designerTab)}
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: 4,
+                            padding: "8px 4px",
+                            borderRadius: 10,
+                            border: active ? "1px solid rgba(212, 175, 55, 0.6)" : "1px solid transparent",
+                            background: active ? "linear-gradient(135deg, #E5C365, #D4AF37)" : "transparent",
+                            color: active ? "#080B11" : "rgba(220, 230, 245, 0.8)",
+                            fontSize: 11,
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            transition: "all 0.15s ease",
+                            boxShadow: active ? "0 4px 14px rgba(212, 175, 55, 0.25)" : "none",
+                          }}
+                        >
+                          {tab.icon}
+                          <span style={{ whiteSpace: "nowrap" }}>{tab.label}</span>
+                        </button>
+                      );
+                    })}
                   </div>
 
-                  {/* TAB 1: VERSES, DISPLAY MODES, MADD & STANZA CHUNKING */}
-                  {activeTab === "words" && (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 18, direction: "rtl" }}>
-                      {/* Live Word Timing & Ayah Inspector */}
-                      {renderWordTimingInspector()}
-
-                      {/* Scope Selector */}
+                  {/* TAB 1: QURAN & RIWAYAH */}
+                  {designerTab === "quran" && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 16, direction: "rtl" }}>
+                      {/* Riwayah Selector */}
                       <div>
-                        <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#8AB9FF", marginBottom: 8 }}>
-                          نطاق نص الآيات في المشهد:
+                        <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#D4AF37", marginBottom: 8 }}>
+                          رواية المصحف الشريف:
                         </label>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                           {[
-                            {
-                              id: "canonical_complete",
-                              title: "الآيات الكريمة كاملة",
-                              desc: "جلب النص المعتمد من المصحف الشريف مع تتبع الكلمات ومزامنتها وتكرارها",
-                            },
-                            {
-                              id: "recited_flow",
-                              title: "الكلمات المتلوة فقط",
-                              desc: "عرض الكلمات المنطوقة تباعاً بالترتيب الدقيق لتسجيل التلاوة",
-                            },
-                          ].map((s) => (
-                            <button
-                              key={s.id}
-                              onClick={() => setCustomization((c) => ({ ...c, displayScope: s.id as VerseScope }))}
-                              style={{
-                                padding: "12px 14px",
-                                borderRadius: 12,
-                                textAlign: "right",
-                                cursor: "pointer",
-                                border: customization.displayScope === s.id ? "2px solid #2B7FFF" : "1px solid rgba(255,255,255,0.08)",
-                                background: customization.displayScope === s.id ? "rgba(43,127,255,0.18)" : "rgba(255,255,255,0.02)",
-                                color: "#E8EEF7",
-                              }}
-                            >
-                              <div style={{ fontWeight: 700, fontSize: 13, color: customization.displayScope === s.id ? "#8AB9FF" : "#E8EEF7" }}>
-                                {s.title}
-                              </div>
-                              <div style={{ fontSize: 11, color: "rgba(200,210,230,0.6)", marginTop: 4, lineHeight: 1.4 }}>
-                                {s.desc}
-                              </div>
-                            </button>
-                          ))}
+                            { id: "hafs", title: "رواية حفص عن عاصم", desc: "المصحف الشريف بالرسم العثماني المعتمد" },
+                            { id: "warsh", title: "رواية ورش عن نافع", desc: "المصحف الشريف برسم ورش العثماني" },
+                          ].map((r) => {
+                            const isSelected = customization.riwayah === r.id;
+                            return (
+                              <button
+                                key={r.id}
+                                type="button"
+                                onClick={() => handleRiwayahChange(r.id as Riwayah)}
+                                style={{
+                                  padding: "12px 14px",
+                                  borderRadius: 12,
+                                  textAlign: "right",
+                                  cursor: "pointer",
+                                  border: isSelected ? "2px solid #D4AF37" : "1px solid rgba(255,255,255,0.08)",
+                                  background: isSelected ? "rgba(212,175,55,0.18)" : "rgba(255,255,255,0.03)",
+                                  color: "#E8EEF7",
+                                  transition: "all 0.15s ease",
+                                }}
+                              >
+                                <div style={{ fontWeight: 700, fontSize: 13, color: isSelected ? "#FFE885" : "#E8EEF7" }}>
+                                  {r.title}
+                                </div>
+                                <div style={{ fontSize: 11, color: "rgba(200,210,230,0.6)", marginTop: 4, lineHeight: 1.4 }}>
+                                  {r.desc}
+                                </div>
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
 
-                      {/* Word Display Mode */}
-                      <div>
-                        <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#8AB9FF", marginBottom: 8 }}>
-                          طريقة ظهور الكلمات مع الصوت:
-                        </label>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                          {[
-                            { id: "one_by_one", title: "كلمة بكلمة", desc: "تظهر كلمة واحدة فقط أثناء النطق في منتصف الشاشة" },
-                            { id: "two_by_two", title: "كلمتان متعاقبتان", desc: "تظهر كلمتان متتاليتان بالتناوب أثناء التلاوة" },
-                            { id: "phrase", title: "مقطع رصين (أشطر موزونة)", desc: "تقسيم الآيات إلى مقاطع موزونة من سطرين مع إضاءة الكلمة النشطة" },
-                            { id: "full_ayah", title: "كامل الآية", desc: "تظهر الآية كاملة مع تتبع الكلمات وإعادة كتابتها عند التكرار" },
-                          ].map((m) => (
-                            <button
-                              key={m.id}
-                              onClick={() => setCustomization((c) => ({ ...c, wordMode: m.id as WordMode }))}
-                              style={{
-                                padding: "12px 14px",
-                                borderRadius: 12,
-                                textAlign: "right",
-                                cursor: "pointer",
-                                border: customization.wordMode === m.id ? "2px solid #2B7FFF" : "1px solid rgba(255,255,255,0.08)",
-                                background: customization.wordMode === m.id ? "rgba(43,127,255,0.14)" : "rgba(255,255,255,0.02)",
-                                color: "#E8EEF7",
-                              }}
-                            >
-                              <div style={{ fontWeight: 700, fontSize: 13, color: customization.wordMode === m.id ? "#8AB9FF" : "#E8EEF7" }}>
-                                {m.title}
-                              </div>
-                              <div style={{ fontSize: 11, color: "rgba(200,210,230,0.6)", marginTop: 4, lineHeight: 1.4 }}>
-                                {m.desc}
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Rhythmic Stanza Chunking for Long Verses */}
+                      {/* Read-Only Quranic Text Display Card */}
                       <div
                         style={{
-                          background: "rgba(43,127,255,0.08)",
-                          border: "1px solid rgba(43,127,255,0.25)",
-                          borderRadius: 14,
-                          padding: "14px 16px",
+                          background: "rgba(18, 24, 38, 0.75)",
+                          border: "1px solid rgba(212, 175, 55, 0.28)",
+                          borderRadius: 16,
+                          padding: "18px 20px",
+                          boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
                         }}
                       >
-                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                          <span style={{ fontSize: 13, fontWeight: 700, color: "#8AB9FF" }}>
-                            تقطيع الآيات الطويلة إلى أشطر موزونة (Stanzas):
-                          </span>
-                          <span style={{ fontSize: 13, color: "#8AB9FF", fontWeight: 700 }}>
-                            {customization.wordsPerStanza} كلمات للمقطع
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: 10 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <span style={{ fontSize: 14, fontWeight: 700, color: "#FFE885" }}>
+                              سورة {result.surahName || ALL_SURAHS.find((s) => s.number === result.surah)?.nameArabic}
+                            </span>
+                            <span style={{ fontSize: 12, color: "rgba(200,210,230,0.6)" }}>
+                              • {result.fromAyah === result.toAyah ? `الآية ${result.fromAyah || result.ayah}` : `الآيات ${result.fromAyah || result.ayah} - ${result.toAyah || result.ayah}`}
+                            </span>
+                          </div>
+                          <span
+                            style={{
+                              fontSize: 11,
+                              padding: "3px 8px",
+                              borderRadius: 6,
+                              background: "rgba(212,175,55,0.15)",
+                              color: "#D4AF37",
+                              border: "1px solid rgba(212,175,55,0.3)",
+                            }}
+                          >
+                            {customization.riwayah === "warsh" ? "رواية ورش" : "رواية حفص"}
                           </span>
                         </div>
-                        <p style={{ fontSize: 11, color: "rgba(200,210,230,0.65)", margin: "0 0 10px", lineHeight: 1.5 }}>
-                          لمنع تكدس الكلمات في الآيات الكبيرة (مثل آية الكرسي أو المقاطع الطويلة)، تُعرض الآية في مقاطع من سطرين ترتقي تلقائياً مع تلاوة القارئ
-                        </p>
-                        <input
-                          type="range"
-                          min="5"
-                          max="10"
-                          step="1"
-                          value={customization.wordsPerStanza}
-                          onChange={(e) => setCustomization((c) => ({ ...c, wordsPerStanza: Number(e.target.value) }))}
-                          style={{ width: "100%", accentColor: "#2B7FFF", cursor: "pointer" }}
-                        />
-                      </div>
 
-                      {/* Tajweed Madd Vowel Holding Toggle */}
-                      <div
-                        style={{
-                          background: "rgba(255,255,255,0.03)",
-                          border: "1px solid rgba(255,255,255,0.08)",
-                          borderRadius: 14,
-                          padding: "14px 16px",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          cursor: "pointer",
-                        }}
-                        onClick={() => setCustomization((c) => ({ ...c, holdMaddVowels: !c.holdMaddVowels }))}
-                      >
-                        <div style={{ paddingLeft: 10 }}>
-                          <div style={{ fontWeight: 700, fontSize: 13, color: "#8AB9FF" }}>
-                            تثبيت الكلمة طوال زمن المد الصوتي (حتى بداية الكلمة التالية)
-                          </div>
-                          <div style={{ fontSize: 11, color: "rgba(200,210,230,0.6)", marginTop: 3, lineHeight: 1.4 }}>
-                            تبقى الكلمة ظاهرة ومضاءة بثبات طوال مد الصوت والمدود (2 إلى 6 حركات) دون اختفاء مفاجئ مع الحفاظ على الرسم العثماني وعلامة المد (ٓ)
-                          </div>
+                        {/* Sacred Text (Strictly Read-Only) */}
+                        <div
+                          style={{
+                            fontFamily: customization.fontFamily === "cairo" ? "'Cairo', sans-serif" : "'Amiri Quran', 'Amiri', serif",
+                            fontSize: 19,
+                            lineHeight: 2.2,
+                            color: "#F5ECD8",
+                            textAlign: "center",
+                            padding: "8px 4px",
+                            userSelect: "text",
+                          }}
+                        >
+                          {result.uthmani}
                         </div>
-                        <input
-                          type="checkbox"
-                          checked={customization.holdMaddVowels}
-                          onChange={(e) => setCustomization((c) => ({ ...c, holdMaddVowels: e.target.checked }))}
-                          style={{ width: 18, height: 18, accentColor: "#2B7FFF", cursor: "pointer", flexShrink: 0 }}
-                        />
-                      </div>
 
-                      {/* Repetition Badge Toggle */}
-                      <div
-                        style={{
-                          background: "rgba(255,255,255,0.03)",
-                          border: "1px solid rgba(255,255,255,0.08)",
-                          borderRadius: 14,
-                          padding: "14px 16px",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          cursor: "pointer",
-                        }}
-                        onClick={() => setCustomization((c) => ({ ...c, showRepetitionBadge: !c.showRepetitionBadge }))}
-                      >
-                        <div style={{ paddingLeft: 10 }}>
-                          <div style={{ fontWeight: 700, fontSize: 13, color: "#8AB9FF" }}>
-                            إظهار وسم التكرار عند إعادة الكلمات (الوقف والابتداء)
-                          </div>
-                          <div style={{ fontSize: 11, color: "rgba(200,210,230,0.6)", marginTop: 3 }}>
-                            عندما يكرر القارئ كلمة أو عبارة يُعرض وسم ذهبي أنيق وتُعاد كتابة الكلمة فورياً
-                          </div>
+                        {/* Search / Choose Other Passage Modal Trigger */}
+                        <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "center" }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditSurah(result.surah);
+                              setEditFromAyah(result.fromAyah || result.ayah);
+                              setEditToAyah(result.toAyah || result.ayah);
+                              setShowEditAyahModal(true);
+                            }}
+                            style={{
+                              ...ghostBtn,
+                              padding: "8px 16px",
+                              fontSize: 12,
+                              border: "1px solid rgba(212, 175, 55, 0.4)",
+                              color: "#D4AF37",
+                              background: "rgba(212, 175, 55, 0.06)",
+                            }}
+                          >
+                            اختيار أو بحث عن آيات أخرى في المصحف
+                          </button>
                         </div>
-                        <input
-                          type="checkbox"
-                          checked={customization.showRepetitionBadge}
-                          onChange={(e) => setCustomization((c) => ({ ...c, showRepetitionBadge: e.target.checked }))}
-                          style={{ width: 18, height: 18, accentColor: "#2B7FFF", cursor: "pointer", flexShrink: 0 }}
-                        />
-                      </div>
-
-                      {/* Silence Gating Toggle */}
-                      <div
-                        style={{
-                          background: "rgba(255,255,255,0.03)",
-                          border: "1px solid rgba(255,255,255,0.08)",
-                          borderRadius: 14,
-                          padding: "14px 16px",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          cursor: "pointer",
-                        }}
-                        onClick={() => setCustomization((c) => ({ ...c, hideOnSilence: !c.hideOnSilence }))}
-                      >
-                        <div style={{ paddingLeft: 10 }}>
-                          <div style={{ fontWeight: 700, fontSize: 13, color: "#8AB9FF" }}>
-                            إخفاء الكلمات تماماً عند توقف الصوت (السكوت والوقف)
-                          </div>
-                          <div style={{ fontSize: 11, color: "rgba(200,210,230,0.6)", marginTop: 3 }}>
-                            عند أخذ النَفَس أو وقفات القارئ تختفي الكلمات ولا تظهر إلا مع عودة الصوت
-                          </div>
-                        </div>
-                        <input
-                          type="checkbox"
-                          checked={customization.hideOnSilence}
-                          onChange={(e) => setCustomization((c) => ({ ...c, hideOnSilence: e.target.checked }))}
-                          style={{ width: 18, height: 18, accentColor: "#2B7FFF", cursor: "pointer", flexShrink: 0 }}
-                        />
                       </div>
                     </div>
                   )}
 
-                  {/* TAB 2: TACTILE POSITION & BOUNDING BOX CONTROLS */}
-                  {activeTab === "box" && (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 18, direction: "rtl" }}>
-                      {/* Vertical Position */}
-                      <div>
-                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                          <span style={{ fontSize: 13, fontWeight: 700, color: "#8AB9FF" }}>
-                            موقع النص الرأسي (ارتفاع الشاشة):
+                  {/* TAB 2: CADRE & POSITIONING */}
+                  {designerTab === "cadre" && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 16, direction: "rtl" }}>
+                      {/* Vertical Position (Y) */}
+                      <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: "14px 16px" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: "#D4AF37" }}>
+                            موضع النص على الشاشة (الارتفاع):
                           </span>
-                          <span style={{ fontSize: 13, color: "#2B7FFF", fontWeight: 700 }}>{customization.wordPosY}%</span>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: "#D4AF37" }}>
+                            {customization.wordPosY}%
+                          </span>
                         </div>
-
-                        {/* Tactile Presets buttons */}
-                        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                        <p style={{ fontSize: 11, color: "rgba(200,210,230,0.6)", margin: "0 0 10px" }}>
+                          تحريك إطار الآيات لأعلى أو أسفل (يمكنك أيضاً السحب بيدك على شاشة المعاينة مباشرة)
+                        </p>
+                        <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
                           {[
-                            { label: "أعلى الشاشة (30%)", val: 30 },
-                            { label: "منتصف الشاشة (50%)", val: 50 },
-                            { label: "ثلث سفلي ريلز (68%)", val: 68 },
-                          ].map((p) => (
+                            { label: "أعلى الشاشة (32%)", val: 32 },
+                            { label: "وسط الشاشة (52%)", val: 52 },
+                            { label: "ريلز وتيك توك (68%)", val: 68 },
+                          ].map((btn) => (
                             <button
-                              key={p.val}
-                              onClick={() => setCustomization((c) => ({ ...c, wordPosY: p.val }))}
+                              key={btn.val}
+                              type="button"
+                              onClick={() => setCustomization((c) => ({ ...c, wordPosY: btn.val }))}
                               style={{
                                 flex: 1,
-                                padding: "8px 10px",
-                                borderRadius: 9,
-                                fontSize: 12,
+                                padding: "7px 6px",
+                                borderRadius: 8,
+                                fontSize: 11,
                                 fontWeight: 700,
                                 cursor: "pointer",
-                                border: customization.wordPosY === p.val ? "1px solid #2B7FFF" : "1px solid rgba(255,255,255,0.1)",
-                                background: customization.wordPosY === p.val ? "rgba(43,127,255,0.22)" : "rgba(255,255,255,0.03)",
-                                color: customization.wordPosY === p.val ? "#8AB9FF" : "#E8EEF7",
-                                transition: "all 0.15s ease",
+                                border: customization.wordPosY === btn.val ? "1px solid #D4AF37" : "1px solid rgba(255,255,255,0.08)",
+                                background: customization.wordPosY === btn.val ? "rgba(212,175,55,0.2)" : "rgba(255,255,255,0.03)",
+                                color: customization.wordPosY === btn.val ? "#FFE885" : "#E8EEF7",
                               }}
                             >
-                              {p.label}
+                              {btn.label}
                             </button>
                           ))}
-                        </div>
-
-                        <input
-                          type="range"
-                          min="20"
-                          max="82"
-                          value={customization.wordPosY}
-                          onChange={(e) => setCustomization((c) => ({ ...c, wordPosY: Number(e.target.value) }))}
-                          style={{ width: "100%", accentColor: "#2B7FFF", cursor: "pointer" }}
-                        />
-                      </div>
-
-                      {/* Box Style */}
-                      <div>
-                        <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#8AB9FF", marginBottom: 8 }}>
-                          نمط إطار النص:
-                        </label>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                          {[
-                            { id: "glass", label: "زجاجي شفاف فاخر" },
-                            { id: "gold_frame", label: "إطار مذهب إسلامي" },
-                            { id: "dark_cinematic", label: "تعتيم سينمائي ناعم" },
-                            { id: "none", label: "بدون إطار (حر)" },
-                          ].map((b) => (
-                            <button
-                              key={b.id}
-                              onClick={() => setCustomization((c) => ({ ...c, boxStyle: b.id as BoxStyle }))}
-                              style={{
-                                padding: "11px 10px",
-                                borderRadius: 10,
-                                fontSize: 12,
-                                fontWeight: 600,
-                                cursor: "pointer",
-                                border: customization.boxStyle === b.id ? "2px solid #2B7FFF" : "1px solid rgba(255,255,255,0.08)",
-                                background: customization.boxStyle === b.id ? "rgba(43,127,255,0.16)" : "rgba(255,255,255,0.02)",
-                                color: customization.boxStyle === b.id ? "#8AB9FF" : "#E8EEF7",
-                              }}
-                            >
-                              {b.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Box Width */}
-                      <div>
-                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                          <span style={{ fontSize: 13, fontWeight: 700 }}>عرض مستطيل النص:</span>
-                          <span style={{ fontSize: 13, color: "#2B7FFF", fontWeight: 700 }}>{Math.round(customization.boxWidthRatio * 100)}%</span>
-                        </div>
-                        <input
-                          type="range"
-                          min="0.60"
-                          max="0.95"
-                          step="0.02"
-                          value={customization.boxWidthRatio}
-                          onChange={(e) => setCustomization((c) => ({ ...c, boxWidthRatio: Number(e.target.value) }))}
-                          style={{ width: "100%", accentColor: "#2B7FFF", cursor: "pointer" }}
-                        />
-                      </div>
-
-                      {/* Box Padding Y */}
-                      <div>
-                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                          <span style={{ fontSize: 13, fontWeight: 700 }}>حجم الحشوة الرأسية:</span>
-                          <span style={{ fontSize: 13, color: "#2B7FFF", fontWeight: 700 }}>{customization.boxPaddingY}px</span>
                         </div>
                         <input
                           type="range"
                           min="20"
                           max="80"
-                          value={customization.boxPaddingY}
-                          onChange={(e) => setCustomization((c) => ({ ...c, boxPaddingY: Number(e.target.value) }))}
-                          style={{ width: "100%", accentColor: "#2B7FFF", cursor: "pointer" }}
+                          value={customization.wordPosY}
+                          onChange={(e) => setCustomization((c) => ({ ...c, wordPosY: Number(e.target.value) }))}
+                          style={{ width: "100%", accentColor: "#D4AF37", cursor: "pointer" }}
                         />
                       </div>
 
-                      {/* Box Opacity */}
-                      <div>
-                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                          <span style={{ fontSize: 13, fontWeight: 700 }}>شفافية خلفية الإطار:</span>
-                          <span style={{ fontSize: 13, color: "#2B7FFF", fontWeight: 700 }}>{Math.round(customization.boxOpacity * 100)}%</span>
+                      {/* Cadre Width & Words per Line */}
+                      <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: "14px 16px" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: "#D4AF37" }}>
+                            عرض الإطار وعدد كلمات السطر:
+                          </span>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: "#D4AF37" }}>
+                            {Math.round(customization.boxWidthRatio * 100)}%
+                          </span>
+                        </div>
+                        <p style={{ fontSize: 11, color: "rgba(200,210,230,0.6)", margin: "0 0 10px" }}>
+                          توسيع الإطار يجمع كلمات أكثر في السطر الواحد، وتضييقه يقسم الآية على أسطر متعددة
+                        </p>
+                        <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+                          {[
+                            { label: "عريض - سطر واحد (92%)", val: 0.92 },
+                            { label: "متناسق - سطران (82%)", val: 0.82 },
+                            { label: "مدمج - عدة أسطر (64%)", val: 0.64 },
+                          ].map((btn) => (
+                            <button
+                              key={btn.val}
+                              type="button"
+                              onClick={() => setCustomization((c) => ({ ...c, boxWidthRatio: btn.val }))}
+                              style={{
+                                flex: 1,
+                                padding: "7px 6px",
+                                borderRadius: 8,
+                                fontSize: 11,
+                                fontWeight: 700,
+                                cursor: "pointer",
+                                border: customization.boxWidthRatio === btn.val ? "1px solid #D4AF37" : "1px solid rgba(255,255,255,0.08)",
+                                background: customization.boxWidthRatio === btn.val ? "rgba(212,175,55,0.2)" : "rgba(255,255,255,0.03)",
+                                color: customization.boxWidthRatio === btn.val ? "#FFE885" : "#E8EEF7",
+                              }}
+                            >
+                              {btn.label}
+                            </button>
+                          ))}
                         </div>
                         <input
                           type="range"
-                          min="0.1"
-                          max="1.0"
-                          step="0.05"
-                          value={customization.boxOpacity}
-                          onChange={(e) => setCustomization((c) => ({ ...c, boxOpacity: Number(e.target.value) }))}
-                          style={{ width: "100%", accentColor: "#2B7FFF", cursor: "pointer" }}
+                          min="0.50"
+                          max="0.95"
+                          step="0.02"
+                          value={customization.boxWidthRatio}
+                          onChange={(e) => setCustomization((c) => ({ ...c, boxWidthRatio: Number(e.target.value) }))}
+                          style={{ width: "100%", accentColor: "#D4AF37", cursor: "pointer" }}
                         />
                       </div>
-                    </div>
-                  )}
 
-                  {/* TAB 3: ANIMATIONS & MOTION */}
-                  {activeTab === "anim" && (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 18, direction: "rtl" }}>
-                      <div>
-                        <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#8AB9FF", marginBottom: 6 }}>
-                          تأثير حركة وظهور الكلمات عند نطقها:
-                        </label>
-                        <p style={{ fontSize: 11, color: "rgba(200,210,230,0.6)", margin: "0 0 12px" }}>
-                          اختر التأثير البصري لكل كلمة لحظة نطقها، مع تجدد التأثير فورياً عند تكرار المقاطع
-                        </p>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
-                          {[
-                            {
-                              id: "typewriter",
-                              title: "الكتابة الحية الحرفية (Typewriter)",
-                              desc: "تُكتب حروف الكلمة بالتزامن الدقيق مع نطق القارئ وتتجدد من الحرف الأول عند التكرار",
-                              tag: "الأكثر طلباً",
-                            },
-                            {
-                              id: "pop_bounce",
-                              title: "الانبثاق والارتداد المشع (Pop & Spring)",
-                              desc: "تنبثق الكلمة بحجم مرن وترتد بنعومة مع موجة هالة ذهبية دائرية تضيء الشاشة",
-                              tag: "حركي جذاب",
-                            },
-                            {
-                              id: "shimmer_gold",
-                              title: "بريق ولمعان الذهب (Golden Sweep / Shimmer)",
-                              desc: "شعاع ضوء ذهبي ساطع يمسح الكلمة من اليمين إلى اليسار ببريق متلألئ مع الصوت",
-                              tag: "فاخر وجديد",
-                            },
-                            {
-                              id: "flip_reveal",
-                              title: "الانقلاب المحوري ثلاثي الأبعاد (3D Flip)",
-                              desc: "انقلاب سينمائي رأسي ثلاثي الأبعاد مع وهج ذهبي مشع يتجدد مع كل نطق",
-                              tag: "سينمائي راقٍ",
-                            },
-                            {
-                              id: "glow_pulse",
-                              title: "النبض والتوهج المتجدد (Radiant Bloom)",
-                              desc: "توهج ملكي فاخر ينبض بالضوء المشع حول الكلمة طوال مدة نطقها وجريان الصوت",
-                              tag: "ملكي روحاني",
-                            },
-                            {
-                              id: "fade_slide_up",
-                              title: "الصعود والتلاشي الانسيابي (Smooth Float Up)",
-                              desc: "تصعد الكلمة بانسيابية من الأسفل مع تلاشي ظهور أنيق وهادئ ومريح للعين",
-                              tag: "هادئ وسلس",
-                            },
-                            {
-                              id: "cinematic_zoom",
-                              title: "التركيز والتقريب السينمائي (Cinematic Focus)",
-                              desc: "تكبير تدريجي ناعم مع تركيز حاد ووضوح سينمائي أثناء جريان الصوت",
-                              tag: "سينمائي احترافي",
-                            },
-                          ].map((anim) => (
-                            <button
-                              key={anim.id}
-                              onClick={() => setCustomization((c) => ({ ...c, wordAnimation: anim.id as AnimationType }))}
-                              style={{
-                                padding: "12px 14px",
-                                borderRadius: 12,
-                                textAlign: "right",
-                                cursor: "pointer",
-                                border: customization.wordAnimation === anim.id ? "2px solid #2B7FFF" : "1px solid rgba(255,255,255,0.08)",
-                                background: customization.wordAnimation === anim.id ? "rgba(43,127,255,0.18)" : "rgba(255,255,255,0.02)",
-                                color: "#E8EEF7",
-                                transition: "all 0.15s ease",
-                              }}
-                            >
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
-                                <span style={{ fontWeight: 700, fontSize: 13, color: customization.wordAnimation === anim.id ? "#8AB9FF" : "#E8EEF7" }}>
-                                  {anim.title}
-                                </span>
-                                <span
-                                  style={{
-                                    fontSize: 10,
-                                    padding: "2px 7px",
-                                    borderRadius: 6,
-                                    background: customization.wordAnimation === anim.id ? "rgba(43,127,255,0.3)" : "rgba(255,255,255,0.06)",
-                                    color: customization.wordAnimation === anim.id ? "#8AB9FF" : "rgba(200,210,230,0.6)",
-                                  }}
-                                >
-                                  {anim.tag}
-                                </span>
-                              </div>
-                              <p style={{ margin: 0, fontSize: 11, color: "rgba(200,210,230,0.62)", lineHeight: 1.4 }}>
-                                {anim.desc}
-                              </p>
-                            </button>
-                          ))}
+                      {/* Text Font Size */}
+                      <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: "14px 16px" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: "#D4AF37" }}>
+                            حجم خط كتابة الآيات:
+                          </span>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: "#D4AF37" }}>
+                            {customization.fontSize}px
+                          </span>
                         </div>
-                      </div>
-
-                      {/* Animation Speed */}
-                      <div>
-                        <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#8AB9FF", marginBottom: 8 }}>
-                          سرعة حركة وأنيميشن الكلمات:
-                        </label>
-                        <div style={{ display: "flex", gap: 8 }}>
+                        <p style={{ fontSize: 11, color: "rgba(200,210,230,0.6)", margin: "0 0 10px" }}>
+                          تكبير أو تصغير حجم كتابة الكلمات داخل الإطار
+                        </p>
+                        <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
                           {[
-                            { id: "fast", label: "سريع ديناميكي" },
-                            { id: "normal", label: "طبيعي متوازن" },
-                            { id: "smooth", label: "سينمائي متأنٍ" },
-                          ].map((sp) => (
+                            { label: "صغير (52px)", val: 52 },
+                            { label: "قياسي (64px)", val: 64 },
+                            { label: "كبير بارز (76px)", val: 76 },
+                          ].map((btn) => (
                             <button
-                              key={sp.id}
-                              onClick={() => setCustomization((c) => ({ ...c, animationSpeed: sp.id as AnimationSpeed }))}
+                              key={btn.val}
+                              type="button"
+                              onClick={() => setCustomization((c) => ({ ...c, fontSize: btn.val }))}
                               style={{
                                 flex: 1,
-                                padding: "9px 8px",
-                                borderRadius: 10,
-                                fontSize: 12,
+                                padding: "7px 6px",
+                                borderRadius: 8,
+                                fontSize: 11,
                                 fontWeight: 700,
                                 cursor: "pointer",
-                                border: customization.animationSpeed === sp.id ? "2px solid #2B7FFF" : "1px solid rgba(255,255,255,0.08)",
-                                background: customization.animationSpeed === sp.id ? "rgba(43,127,255,0.18)" : "rgba(255,255,255,0.02)",
-                                color: customization.animationSpeed === sp.id ? "#8AB9FF" : "#E8EEF7",
+                                border: customization.fontSize === btn.val ? "1px solid #D4AF37" : "1px solid rgba(255,255,255,0.08)",
+                                background: customization.fontSize === btn.val ? "rgba(212,175,55,0.2)" : "rgba(255,255,255,0.03)",
+                                color: customization.fontSize === btn.val ? "#FFE885" : "#E8EEF7",
                               }}
                             >
-                              {sp.label}
+                              {btn.label}
                             </button>
                           ))}
                         </div>
+                        <input
+                          type="range"
+                          min="32"
+                          max="84"
+                          step="2"
+                          value={customization.fontSize}
+                          onChange={(e) => setCustomization((c) => ({ ...c, fontSize: Number(e.target.value) }))}
+                          style={{ width: "100%", accentColor: "#D4AF37", cursor: "pointer" }}
+                        />
                       </div>
 
-                      {/* Cursor Style */}
+                      {/* Frame Style */}
                       <div>
-                        <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#8AB9FF", marginBottom: 8 }}>
-                          مؤشر الكتابة (Cursor Style):
+                        <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#D4AF37", marginBottom: 8 }}>
+                          نمط وتصميم الإطار:
                         </label>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                           {[
-                            { id: "golden_dot", label: "نقطة ذهبية متوهجة" },
-                            { id: "sparkle_star", label: "نجمة متألقة" },
-                            { id: "pulsing_ring", label: "حلقة ليزرية نابضة" },
-                            { id: "none", label: "بدون مؤشر" },
-                          ].map((cur) => (
+                            { id: "glass", label: "زجاجي شفاف (Glass)" },
+                            { id: "gold_frame", label: "إطار ذهبي مزخرف" },
+                            { id: "dark_cinematic", label: "تعتيم سينمائي ناعم" },
+                            { id: "none", label: "نص نقي بدون إطار" },
+                          ].map((st) => (
                             <button
-                              key={cur.id}
-                              onClick={() => setCustomization((c) => ({ ...c, cursorStyle: cur.id as CursorStyle }))}
+                              key={st.id}
+                              type="button"
+                              onClick={() => setCustomization((c) => ({ ...c, boxStyle: st.id as BoxStyle }))}
                               style={{
                                 padding: "10px 12px",
                                 borderRadius: 10,
                                 fontSize: 12,
-                                fontWeight: 600,
+                                fontWeight: 700,
                                 cursor: "pointer",
-                                border: customization.cursorStyle === cur.id ? "2px solid #2B7FFF" : "1px solid rgba(255,255,255,0.08)",
-                                background: customization.cursorStyle === cur.id ? "rgba(43,127,255,0.18)" : "rgba(255,255,255,0.02)",
-                                color: customization.cursorStyle === cur.id ? "#8AB9FF" : "#E8EEF7",
+                                border: customization.boxStyle === st.id ? "1px solid #D4AF37" : "1px solid rgba(255,255,255,0.08)",
+                                background: customization.boxStyle === st.id ? "rgba(212,175,55,0.2)" : "rgba(255,255,255,0.03)",
+                                color: customization.boxStyle === st.id ? "#FFE885" : "#E8EEF7",
                               }}
                             >
-                              {cur.label}
+                              {st.label}
                             </button>
                           ))}
                         </div>
@@ -3943,268 +2627,97 @@ export default function QuranVideoPage() {
                     </div>
                   )}
 
-                  {/* TAB 4: BACKGROUNDS */}
-                  {activeTab === "bg" && (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 18, direction: "rtl" }}>
-                      <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#8AB9FF" }}>
-                        اختر خلفية المشهد:
-                      </label>
-
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
-                        {[
-                          { id: "mosque_night", label: "مسجد ليلي", type: "preset_image" },
-                          { id: "golden_emerald", label: "زخرفة زمردية", type: "preset_image" },
-                          { id: "space_stars", label: "نجوم متحركة", type: "stars" },
-                          { id: "dark_onyx", label: "أسود ملكي", type: "preset_gradient" },
-                          { id: "spiritual_emerald", label: "أخضر روحاني", type: "preset_gradient" },
-                          { id: "midnight_blue", label: "أزرق كحلي", type: "preset_gradient" },
-                        ].map((b) => (
-                          <button
-                            key={b.id}
-                            onClick={() => {
-                              setCustomization((c) => ({
-                                ...c,
-                                bgType: b.type as Customization["bgType"],
-                                bgPreset: b.id as BgPreset,
-                              }));
-                            }}
-                            style={{
-                              padding: "13px 8px",
-                              borderRadius: 12,
-                              textAlign: "center",
-                              cursor: "pointer",
-                              border: (customization.bgType === b.type && customization.bgPreset === b.id)
-                                ? "2px solid #2B7FFF"
-                                : "1px solid rgba(255,255,255,0.08)",
-                              background: (customization.bgType === b.type && customization.bgPreset === b.id)
-                                ? "rgba(43,127,255,0.18)"
-                                : "rgba(255,255,255,0.03)",
-                              color: "#E8EEF7",
-                              fontSize: 12,
-                              fontWeight: 700,
-                            }}
-                          >
-                            {b.label}
-                          </button>
-                        ))}
-                      </div>
-
-                      {uploadedVideoUrl && (
-                        <div
-                          style={{
-                            background: customization.bgType === "uploaded_video" ? "rgba(43,127,255,0.18)" : "rgba(255,255,255,0.03)",
-                            border: customization.bgType === "uploaded_video" ? "2px solid #2B7FFF" : "1px solid rgba(255,255,255,0.08)",
-                            borderRadius: 12,
-                            padding: "12px 16px",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            cursor: "pointer",
-                          }}
-                          onClick={() => {
-                            setCustomization((c) => ({ ...c, bgType: "uploaded_video" }));
-                            if (!uploadedVideoElRef.current) {
-                              const vid = document.createElement("video");
-                              vid.src = uploadedVideoUrl;
-                              vid.loop = true;
-                              vid.muted = true;
-                              vid.playsInline = true;
-                              uploadedVideoElRef.current = vid;
-                            }
-                          }}
-                        >
-                          <div>
-                            <div style={{ fontWeight: 700, fontSize: 13, color: "#8AB9FF" }}>
-                              استخدام الفيديو المرفوع كخلفية للمشهد
-                            </div>
-                            <div style={{ fontSize: 11, color: "rgba(200,210,230,0.6)" }}>
-                              تشغيل الفيديو الذي قمت برفعه كخلفية متحركة خلف الآيات
-                            </div>
-                          </div>
-                          <IconCheck size={16} color="#E5C365" />
-                        </div>
-                      )}
-
-                      <div style={{ display: "flex", gap: 10 }}>
-                        <label
-                          style={{
-                            ...ghostBtn,
-                            flex: 1,
-                            textAlign: "center",
-                            cursor: "pointer",
-                            fontSize: 12,
-                            padding: "10px",
-                          }}
-                        >
-                          رفع صورة مخصصة
-                          <input
-                            type="file"
-                            accept="image/*"
-                            style={{ display: "none" }}
-                            onChange={(e) => {
-                              const f = e.target.files?.[0];
-                              if (f) {
-                                const url = URL.createObjectURL(f);
-                                const img = new Image();
-                                img.src = url;
-                                img.onload = () => {
-                                  customImgRef.current = img;
-                                  setCustomization((c) => ({
-                                    ...c,
-                                    bgType: "custom_image",
-                                    customImage: url,
-                                  }));
-                                };
-                              }
-                            }}
-                          />
-                        </label>
-
-                        <label
-                          style={{
-                            ...ghostBtn,
-                            flex: 1,
-                            textAlign: "center",
-                            cursor: "pointer",
-                            fontSize: 12,
-                            padding: "10px",
-                          }}
-                        >
-                          رفع فيديو مخصص
-                          <input
-                            type="file"
-                            accept="video/*"
-                            style={{ display: "none" }}
-                            onChange={(e) => {
-                              const f = e.target.files?.[0];
-                              if (f) {
-                                const url = URL.createObjectURL(f);
-                                const vid = document.createElement("video");
-                                vid.src = url;
-                                vid.loop = true;
-                                vid.muted = true;
-                                vid.playsInline = true;
-                                vid.onloadedmetadata = () => {
-                                  customVideoElRef.current = vid;
-                                  setCustomization((c) => ({
-                                    ...c,
-                                    bgType: "custom_video",
-                                    customVideo: url,
-                                  }));
-                                };
-                              }
-                            }}
-                          />
-                        </label>
-                      </div>
-
-                      <div
-                        style={{
-                          background: "rgba(255,255,255,0.03)",
-                          border: "1px solid rgba(255,255,255,0.08)",
-                          borderRadius: 12,
-                          padding: "12px 16px",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                        }}
-                      >
-                        <span style={{ fontSize: 13, fontWeight: 600 }}>تدرج لوني مخصص:</span>
-                        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                          <input
-                            type="color"
-                            value={customization.customColor1}
-                            onChange={(e) => {
-                              setCustomization((c) => ({
-                                ...c,
-                                bgType: "custom_color",
-                                customColor1: e.target.value,
-                              }));
-                            }}
-                            style={{ width: 34, height: 34, border: "none", borderRadius: 8, cursor: "pointer", background: "none" }}
-                          />
-                          <input
-                            type="color"
-                            value={customization.customColor2}
-                            onChange={(e) => {
-                              setCustomization((c) => ({
-                                ...c,
-                                bgType: "custom_color",
-                                customColor2: e.target.value,
-                              }));
-                            }}
-                            style={{ width: 34, height: 34, border: "none", borderRadius: 8, cursor: "pointer", background: "none" }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* TAB 5: STYLE & TYPOGRAPHY */}
-                  {activeTab === "style" && (
+                  {/* TAB 3: FONT & MOTION */}
+                  {designerTab === "style" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 16, direction: "rtl" }}>
                       {/* Font Family */}
                       <div>
-                        <span style={{ fontSize: 13, fontWeight: 700, display: "block", marginBottom: 8, color: "#8AB9FF" }}>
+                        <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#D4AF37", marginBottom: 8 }}>
                           نوع الخط القرآني:
-                        </span>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                        </label>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
                           {[
-                            { id: "amiri", name: "خط مصحف المدينة (Amiri)" },
-                            { id: "cairo", name: "خط الرقعة المعاصر (Cairo)" },
+                            { id: "uthmani", label: "مصحف المدينة (عثماني)", font: "'Amiri Quran', 'Amiri', serif" },
+                            { id: "amiri", label: "الخط الأميري الأصيل", font: "'Amiri', serif" },
+                            { id: "cairo", label: "خط كايرو الحديث", font: "'Cairo', sans-serif" },
                           ].map((f) => (
                             <button
                               key={f.id}
+                              type="button"
                               onClick={() => setCustomization((c) => ({ ...c, fontFamily: f.id as FontFamily }))}
                               style={{
-                                padding: "11px 10px",
+                                padding: "12px 8px",
                                 borderRadius: 10,
-                                fontSize: 12,
-                                fontWeight: 700,
                                 cursor: "pointer",
-                                border: customization.fontFamily === f.id ? "2px solid #2B7FFF" : "1px solid rgba(255,255,255,0.08)",
-                                background: customization.fontFamily === f.id ? "rgba(43,127,255,0.18)" : "rgba(255,255,255,0.02)",
-                                color: customization.fontFamily === f.id ? "#8AB9FF" : "#E8EEF7",
+                                border: customization.fontFamily === f.id ? "1px solid #D4AF37" : "1px solid rgba(255,255,255,0.08)",
+                                background: customization.fontFamily === f.id ? "rgba(212,175,55,0.2)" : "rgba(255,255,255,0.03)",
+                                color: customization.fontFamily === f.id ? "#FFE885" : "#E8EEF7",
+                                textAlign: "center",
                               }}
                             >
-                              {f.name}
+                              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>{f.label}</div>
+                              <div style={{ fontFamily: f.font, fontSize: 16, color: "#FFE885" }}>بِسْمِ اللَّهِ</div>
                             </button>
                           ))}
                         </div>
                       </div>
 
+                      {/* Animation Style */}
                       <div>
-                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                          <span style={{ fontSize: 13, fontWeight: 700 }}>حجم خط الآية الكريمة:</span>
-                          <span style={{ fontSize: 13, color: "#2B7FFF", fontWeight: 700 }}>{customization.fontSize}px</span>
+                        <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#D4AF37", marginBottom: 8 }}>
+                          طريقة ظهور وحركة الكلمات مع التلاوة:
+                        </label>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                          {[
+                            { id: "typewriter", title: "كتابة تدريجية (Typewriter)", desc: "كتابة الحروف تباعاً مع خروج صوت القارئ" },
+                            { id: "shimmer_gold", title: "وميض ذهبي شيمر", desc: "بريق ولمعان ضوئي ذهبي متلألئ" },
+                            { id: "pop_bounce", title: "وثب حيوي (Pop Bounce)", desc: "انبثاق متفاعل بحركة ارتدادية ناعمة" },
+                            { id: "glow_pulse", title: "نبض إيماني (Glow Pulse)", desc: "هالة نورانية تنبض برفق وخشوع" },
+                            { id: "fade_slide_up", title: "صعود وانسياب ناعم", desc: "صعود هادئ وتدريجي للكلمات" },
+                            { id: "cinematic_zoom", title: "زووم سينمائي وقور", desc: "تقريب سينمائي هادئ للمشهد" },
+                          ].map((anim) => (
+                            <button
+                              key={anim.id}
+                              type="button"
+                              onClick={() => setCustomization((c) => ({ ...c, wordAnimation: anim.id as AnimationType }))}
+                              style={{
+                                padding: "10px 12px",
+                                borderRadius: 10,
+                                textAlign: "right",
+                                cursor: "pointer",
+                                border: customization.wordAnimation === anim.id ? "1px solid #D4AF37" : "1px solid rgba(255,255,255,0.08)",
+                                background: customization.wordAnimation === anim.id ? "rgba(212,175,55,0.2)" : "rgba(255,255,255,0.03)",
+                                color: "#E8EEF7",
+                              }}
+                            >
+                              <div style={{ fontWeight: 700, fontSize: 12, color: customization.wordAnimation === anim.id ? "#FFE885" : "#E8EEF7" }}>
+                                {anim.title}
+                              </div>
+                              <div style={{ fontSize: 10, color: "rgba(200,210,230,0.5)", marginTop: 2 }}>
+                                {anim.desc}
+                              </div>
+                            </button>
+                          ))}
                         </div>
-                        <input
-                          type="range"
-                          min="48"
-                          max="96"
-                          step="2"
-                          value={customization.fontSize}
-                          onChange={(e) => setCustomization((c) => ({ ...c, fontSize: Number(e.target.value) }))}
-                          style={{ width: "100%", accentColor: "#2B7FFF", cursor: "pointer" }}
-                        />
                       </div>
 
+                      {/* Glow Highlight Color */}
                       <div>
-                        <span style={{ fontSize: 13, fontWeight: 700, display: "block", marginBottom: 8 }}>
-                          لون إضاءة ووهج الكلمة:
-                        </span>
-                        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+                        <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#D4AF37", marginBottom: 8 }}>
+                          لون إضاءة وتمييز الكلمات:
+                        </label>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
                           {[
-                            { name: "ذهبي ملكي", color: "rgba(235, 185, 75, 0.95)" },
-                            { name: "أبيض ألماسي", color: "rgba(255, 255, 255, 0.95)" },
+                            { name: "ذهب ملكي", color: "rgba(235, 185, 75, 0.95)" },
+                            { name: "أبيض نوراني", color: "rgba(255, 255, 255, 0.95)" },
                             { name: "أخضر زمردي", color: "rgba(50, 205, 120, 0.95)" },
                             { name: "سماوي روحاني", color: "rgba(80, 200, 255, 0.95)" },
-                            { name: "بنفسجي أندلسي", color: "rgba(180, 115, 250, 0.95)" },
                           ].map((g) => {
                             const isSelected = customization.glowColor === g.color;
                             return (
                               <button
                                 key={g.name}
+                                type="button"
                                 onClick={() => setCustomization((c) => ({ ...c, glowColor: g.color }))}
                                 style={{
                                   padding: "9px 6px",
@@ -4212,9 +2725,10 @@ export default function QuranVideoPage() {
                                   fontSize: 11,
                                   fontWeight: 700,
                                   cursor: "pointer",
-                                  border: isSelected ? "2px solid #EBB94B" : "1px solid rgba(255,255,255,0.1)",
-                                  background: isSelected ? "rgba(235,185,75,0.22)" : "rgba(255,255,255,0.03)",
+                                  border: isSelected ? "2px solid #D4AF37" : "1px solid rgba(255,255,255,0.1)",
+                                  background: isSelected ? "rgba(212,175,55,0.22)" : "rgba(255,255,255,0.03)",
                                   color: isSelected ? "#FFE885" : "#E8EEF7",
+                                  textAlign: "center",
                                 }}
                               >
                                 {g.name}
@@ -4223,182 +2737,150 @@ export default function QuranVideoPage() {
                           })}
                         </div>
                       </div>
-
-                      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                        {[
-                          { key: "showBismillah", label: "إظهار البسملة الشريفة في الأعلى" },
-                          { key: "showAyahInfo", label: "إظهار شارة السورة ورقم الآية" },
-                          { key: "showWaveform", label: "إظهار الموجة الصوتية المتفاعلة مع الصوت" },
-                          { key: "showTranslation", label: "إظهار الترجمة المعتمدة أسفل الفيديو" },
-                        ].map((item) => (
-                          <label
-                            key={item.key}
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                              padding: "10px 14px",
-                              borderRadius: 10,
-                              background: "rgba(255,255,255,0.02)",
-                              border: "1px solid rgba(255,255,255,0.06)",
-                              cursor: "pointer",
-                              fontSize: 13,
-                            }}
-                          >
-                            <span>{item.label}</span>
-                            <input
-                              type="checkbox"
-                              checked={customization[item.key as keyof Customization] as boolean}
-                              onChange={(e) => setCustomization((c) => ({ ...c, [item.key]: e.target.checked }))}
-                              style={{ width: 18, height: 18, accentColor: "#2B7FFF", cursor: "pointer" }}
-                            />
-                          </label>
-                        ))}
-                      </div>
                     </div>
                   )}
 
-                  {/* TAB 6: AUDIO, RECITERS & TACTILE FINE-TUNING */}
-                  {activeTab === "audio" && (
+                  {/* TAB 4: SCENE & BACKGROUND */}
+                  {designerTab === "scene" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 16, direction: "rtl" }}>
-                      {/* Tactile Timing Offset Fine-Tuner with Nudge Buttons */}
-                      <div
-                        style={{
-                          background: "rgba(43,127,255,0.08)",
-                          border: "1px solid rgba(43,127,255,0.25)",
-                          borderRadius: 14,
-                          padding: "14px 16px",
-                        }}
-                      >
-                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                          <span style={{ fontSize: 13, fontWeight: 700, color: "#8AB9FF" }}>
-                            ضبط إزاحة التزامن الزمني (Sync Fine-Tuner):
-                          </span>
-                          <span style={{ fontSize: 13, color: "#8AB9FF", fontWeight: 700 }}>
-                            {customization.syncOffsetSec > 0 ? `+${customization.syncOffsetSec.toFixed(2)}s` : `${customization.syncOffsetSec.toFixed(2)}s`}
-                          </span>
-                        </div>
-                        <p style={{ fontSize: 11, color: "rgba(200,210,230,0.6)", margin: "0 0 10px" }}>
-                          تقديم الكلمات أو تأخيرها بأجزاء من الثانية لضبط التزامن الدقيق مع مخارج الحروف
-                        </p>
-
-                        {/* Tactile Nudge Buttons */}
-                        <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-                          {[
-                            { label: "-0.10s", val: -0.10 },
-                            { label: "-0.05s", val: -0.05 },
-                            { label: "إعادة ضبط", val: 0 },
-                            { label: "+0.05s", val: 0.05 },
-                            { label: "+0.10s", val: 0.10 },
-                          ].map((btn) => (
-                            <button
-                              key={btn.label}
-                              onClick={() => {
-                                if (btn.val === 0) {
-                                  setCustomization((c) => ({ ...c, syncOffsetSec: 0 }));
-                                } else {
-                                  setCustomization((c) => ({
-                                    ...c,
-                                    syncOffsetSec: Number(Math.max(-1.0, Math.min(1.0, c.syncOffsetSec + btn.val)).toFixed(2)),
-                                  }));
-                                }
-                              }}
-                              style={{
-                                flex: 1,
-                                padding: "7px 4px",
-                                borderRadius: 8,
-                                fontSize: 11,
-                                fontWeight: 700,
-                                cursor: "pointer",
-                                border: "1px solid rgba(43,127,255,0.3)",
-                                background: "rgba(43,127,255,0.12)",
-                                color: "#8AB9FF",
-                              }}
-                            >
-                              {btn.label}
-                            </button>
-                          ))}
-                        </div>
-
-                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                          <span style={{ fontSize: 11, color: "#aaa" }}>-1.0s</span>
-                          <input
-                            type="range"
-                            min="-1.0"
-                            max="1.0"
-                            step="0.05"
-                            value={customization.syncOffsetSec}
-                            onChange={(e) => setCustomization((c) => ({ ...c, syncOffsetSec: Number(e.target.value) }))}
-                            style={{ flex: 1, accentColor: "#2B7FFF", cursor: "pointer" }}
-                          />
-                          <span style={{ fontSize: 11, color: "#aaa" }}>+1.0s</span>
-                        </div>
-                      </div>
-
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <label style={{ fontSize: 13, fontWeight: 700, color: "#8AB9FF" }}>
-                          اختر مصدر الصوت المعتمد:
+                      {/* Aspect Ratio */}
+                      <div>
+                        <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#D4AF37", marginBottom: 8 }}>
+                          أبعاد ومقاس الفيديو:
                         </label>
-                        {isLoadingAudio && (
-                          <span style={{ fontSize: 12, color: "#2B7FFF" }}>
-                            جاري التحديث...
-                          </span>
-                        )}
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+                          {(Object.keys(ASPECTS) as AspectKey[]).map((key) => {
+                            const active = customization.aspect === key;
+                            return (
+                              <button
+                                key={key}
+                                type="button"
+                                onClick={() => setCustomization((prev) => ({ ...prev, aspect: key }))}
+                                style={{
+                                  padding: "10px 8px",
+                                  borderRadius: 10,
+                                  fontSize: 12,
+                                  fontWeight: 700,
+                                  border: active ? "1px solid #D4AF37" : "1px solid rgba(255,255,255,0.08)",
+                                  background: active ? "rgba(212,175,55,0.2)" : "rgba(255,255,255,0.03)",
+                                  color: active ? "#FFE885" : "#E8EEF7",
+                                  cursor: "pointer",
+                                  textAlign: "center",
+                                }}
+                              >
+                                <div className="force-ltr">{key}</div>
+                                <div style={{ fontSize: 10, color: "rgba(200,210,230,0.6)", marginTop: 2 }}>
+                                  {ASPECTS[key].label}
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
 
-                      <button
-                        onClick={() => handleReciterChange("original")}
-                        style={{
-                          padding: "13px 15px",
-                          borderRadius: 12,
-                          textAlign: "right",
-                          cursor: "pointer",
-                          border: customization.selectedAudioSource === "original" ? "2px solid #2B7FFF" : "1px solid rgba(255,255,255,0.08)",
-                          background: customization.selectedAudioSource === "original" ? "rgba(43,127,255,0.18)" : "rgba(255,255,255,0.03)",
-                          color: "#E8EEF7",
-                        }}
-                      >
-                        <div style={{ fontWeight: 700, fontSize: 13, color: customization.selectedAudioSource === "original" ? "#8AB9FF" : "#E8EEF7" }}>
-                          الصوت الأصلي (التسجيل / الملف المرفوع)
-                        </div>
-                        <div style={{ fontSize: 11, color: "rgba(200,210,230,0.6)", marginTop: 4 }}>
-                          الاحتفاظ بالتلاوة الصوتية التي رفعتها في البداية مع مزامنة كلماتها
-                        </div>
-                      </button>
-
-                      <div style={{ fontSize: 12, color: "rgba(200,210,230,0.7)", marginTop: 2 }}>
-                        أو استبدال الصوت بتلاوة مرتلة لكبار القراء مع إعادة المزامنة:
-                      </div>
-
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                        {RECITERS.map((r) => (
+                      {/* Original Uploaded Video if present */}
+                      {uploadedVideoUrl && (
+                        <div>
+                          <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#D4AF37", marginBottom: 8 }}>
+                            الفيديو الأصلي:
+                          </label>
                           <button
-                            key={r.id}
-                            onClick={() => handleReciterChange(r.id)}
+                            type="button"
+                            onClick={() => setCustomization((c) => ({ ...c, bgType: "uploaded_video" }))}
                             style={{
-                              padding: "11px 12px",
+                              width: "100%",
+                              padding: "12px 14px",
                               borderRadius: 12,
                               textAlign: "right",
                               cursor: "pointer",
-                              border: customization.selectedAudioSource === r.id ? "2px solid #2B7FFF" : "1px solid rgba(255,255,255,0.08)",
-                              background: customization.selectedAudioSource === r.id ? "rgba(43,127,255,0.18)" : "rgba(255,255,255,0.03)",
+                              border: customization.bgType === "uploaded_video" ? "2px solid #D4AF37" : "1px solid rgba(255,255,255,0.1)",
+                              background: customization.bgType === "uploaded_video" ? "rgba(212,175,55,0.2)" : "rgba(255,255,255,0.03)",
                               color: "#E8EEF7",
                             }}
                           >
-                            <div style={{ fontWeight: 700, fontSize: 12, color: customization.selectedAudioSource === r.id ? "#8AB9FF" : "#E8EEF7" }}>
-                              {r.name}
+                            <div style={{ fontWeight: 700, fontSize: 13, color: customization.bgType === "uploaded_video" ? "#FFE885" : "#E8EEF7" }}>
+                              استخدام الفيديو المرفوع الأصلي كخلفية
                             </div>
-                            <div style={{ fontSize: 10, color: "rgba(200,210,230,0.5)", marginTop: 2 }}>
-                              {r.en}
+                            <div style={{ fontSize: 11, color: "rgba(200,210,230,0.6)", marginTop: 2 }}>
+                              يتم دمج تلاوتك الأصلية مع الفيديو مع طبقة تعتيم سينمائي لقراءة النص القرآني
                             </div>
                           </button>
-                        ))}
+                        </div>
+                      )}
+
+                      {/* Preset Scenes & Gradients */}
+                      <div>
+                        <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#D4AF37", marginBottom: 8 }}>
+                          مشاهد وخلفيات سينمائية جاهزة:
+                        </label>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+                          {[
+                            { id: "mosque_night", label: "مسجد ليلي", type: "preset_image" },
+                            { id: "golden_emerald", label: "زخرفة زمردية", type: "preset_image" },
+                            { id: "space_stars", label: "فضاء ونجوم", type: "stars" },
+                            { id: "dark_onyx", label: "أسود ملكي", type: "preset_gradient" },
+                            { id: "spiritual_emerald", label: "أخضر روحاني", type: "preset_gradient" },
+                            { id: "midnight_blue", label: "أزرق كحلي", type: "preset_gradient" },
+                          ].map((b) => {
+                            const isSelected = customization.bgType === b.type && customization.bgPreset === b.id;
+                            return (
+                              <button
+                                key={b.id}
+                                type="button"
+                                onClick={() => setCustomization((c) => ({ ...c, bgType: b.type as Customization["bgType"], bgPreset: b.id as BgPreset }))}
+                                style={{
+                                  padding: "10px 4px",
+                                  borderRadius: 10,
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  cursor: "pointer",
+                                  border: isSelected ? "2px solid #D4AF37" : "1px solid rgba(255,255,255,0.08)",
+                                  background: isSelected ? "rgba(212,175,55,0.2)" : "rgba(255,255,255,0.03)",
+                                  color: isSelected ? "#FFE885" : "#E8EEF7",
+                                  textAlign: "center",
+                                }}
+                              >
+                                {b.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Custom Upload (Image or Video) */}
+                      <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: "14px 16px" }}>
+                        <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#D4AF37", marginBottom: 6 }}>
+                          رفع صورة أو فيديو مخصص من جهازك:
+                        </label>
+                        <input
+                          type="file"
+                          accept="image/*,video/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const url = URL.createObjectURL(file);
+                            if (file.type.startsWith("video/")) {
+                              const videoEl = document.createElement("video");
+                              videoEl.src = url;
+                              videoEl.loop = true;
+                              videoEl.muted = true;
+                              videoEl.play().catch(() => {});
+                              customVideoElRef.current = videoEl;
+                              setCustomization((c) => ({ ...c, bgType: "custom_video", customVideo: url }));
+                            } else {
+                              const img = new Image();
+                              img.src = url;
+                              img.onload = () => { customImgRef.current = img; };
+                              setCustomization((c) => ({ ...c, bgType: "custom_image", customImage: url }));
+                            }
+                          }}
+                          style={{ fontSize: 12, color: "rgba(200,210,230,0.7)" }}
+                        />
                       </div>
                     </div>
                   )}
                 </Card>
               </div>
-
             </div>
 
             {/* Exporting Progress Modal */}
@@ -4471,565 +2953,6 @@ export default function QuranVideoPage() {
                 </div>
               </Card>
             )}
-
-            {/* ================= TIKTOK/CAPCUT MOBILE BOTTOM DOCK & DRAWERS ================= */}
-            {stage === "detected" && (
-              <>
-                {/* 1. Fixed Bottom Action Dock (5 Tools) */}
-                <div className="mobile-bottom-dock" style={{ direction: "rtl" }}>
-                  {[
-                    { id: "captions", icon: <IconCaptions size={19} />, label: "الكلمات" },
-                    { id: "audio", icon: <IconAudioWave size={19} />, label: "الصوت" },
-                    { id: "style", icon: <IconDesign size={19} />, label: "المظهر" },
-                    { id: "canvas", icon: <IconCanvas size={19} />, label: "المشهد" },
-                    { id: "tajweed", icon: <IconTajweed size={19} />, label: "التجويد" },
-                  ].map((tool) => {
-                    const isActive = activeMobileSheet === tool.id;
-                    return (
-                      <button
-                        key={tool.id}
-                        type="button"
-                        className={`mobile-dock-btn ${isActive ? "active" : ""}`}
-                        onClick={() => setActiveMobileSheet(isActive ? null : (tool.id as typeof activeMobileSheet))}
-                      >
-                        <span style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>{tool.icon}</span>
-                        <span>{tool.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* 2. Slide-Up Bottom Sheet Backdrop */}
-                {activeMobileSheet !== null && (
-                  <div
-                    className="mobile-bottom-sheet-backdrop"
-                    onClick={() => setActiveMobileSheet(null)}
-                  />
-                )}
-
-                {/* 3. Slide-Up Bottom Sheet Drawer */}
-                {activeMobileSheet !== null && (
-                  <div className="mobile-bottom-sheet" style={{ direction: "rtl" }}>
-                    {/* Top Grab Handle */}
-                    <div
-                      style={{
-                        width: 40,
-                        height: 4,
-                        borderRadius: 2,
-                        background: "rgba(255,255,255,0.2)",
-                        margin: "10px auto 4px",
-                        cursor: "pointer",
-                      }}
-                      onClick={() => setActiveMobileSheet(null)}
-                    />
-
-                    {/* Drawer Header */}
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        padding: "10px 18px 12px",
-                        borderBottom: "1px solid rgba(255,255,255,0.08)",
-                      }}
-                    >
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <button
-                          type="button"
-                          onClick={togglePlayPreview}
-                          style={{
-                            padding: "6px 12px",
-                            borderRadius: 8,
-                            background: isPlaying ? "rgba(239,68,68,0.18)" : "rgba(255,255,255,0.08)",
-                            color: isPlaying ? "#FCA5A5" : "#E2E8F0",
-                            border: "none",
-                            cursor: "pointer",
-                            fontSize: 12,
-                            fontWeight: 700,
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 5,
-                          }}
-                        >
-                          {isPlaying ? (
-                            <>
-                              <IconPause size={13} />
-                              إيقاف
-                            </>
-                          ) : (
-                            <>
-                              <IconPlay size={13} />
-                              تشغيل
-                            </>
-                          )}
-                        </button>
-                        <h4 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#F5D77F" }}>
-                          {activeMobileSheet === "captions" && "النصوص والتوقيت والسكت"}
-                          {activeMobileSheet === "audio" && "الصوت والقارئ والمزامنة"}
-                          {activeMobileSheet === "style" && "المظهر والخط والتأثيرات"}
-                          {activeMobileSheet === "canvas" && "المشهد والخلفية والأبعاد"}
-                          {activeMobileSheet === "tajweed" && "أحكام التجويد والمدود والوقف"}
-                        </h4>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => setActiveMobileSheet(null)}
-                        style={{
-                          padding: "6px 18px",
-                          borderRadius: 999,
-                          background: "linear-gradient(135deg, #E5C365, #D4AF37)",
-                          color: "#080B11",
-                          border: "none",
-                          fontSize: 13,
-                          fontWeight: 700,
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 5,
-                          boxShadow: "0 2px 10px rgba(212,175,55,0.25)",
-                        }}
-                      >
-                        <IconCheck size={14} color="#080B11" />
-                        تم
-                      </button>
-                    </div>
-
-                    {/* Drawer Content */}
-                    <div style={{ flex: 1, overflowY: "auto", padding: "16px 18px 40px" }}>
-                      {/* SHEET 1: CAPTIONS / WORDS & TIMING */}
-                      {activeMobileSheet === "captions" && (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                          {renderWordTimingInspector()}
-
-                          {/* Word Display Mode */}
-                          <div>
-                            <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#8AB9FF", marginBottom: 8 }}>
-                              طريقة ظهور الكلمات مع الصوت:
-                            </label>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                              {[
-                                { id: "one_by_one", title: "كلمة بكلمة" },
-                                { id: "two_by_two", title: "كلمتان متعاقبتان" },
-                                { id: "phrase", title: "مقطع موزون (أشطر)" },
-                                { id: "full_ayah", title: "كامل الآية" },
-                              ].map((m) => (
-                                <button
-                                  key={m.id}
-                                  type="button"
-                                  onClick={() => setCustomization((c) => ({ ...c, wordMode: m.id as WordMode }))}
-                                  style={{
-                                    padding: "10px",
-                                    borderRadius: 10,
-                                    fontSize: 12,
-                                    fontWeight: 700,
-                                    cursor: "pointer",
-                                    border: customization.wordMode === m.id ? "2px solid #2B7FFF" : "1px solid rgba(255,255,255,0.08)",
-                                    background: customization.wordMode === m.id ? "rgba(43,127,255,0.18)" : "rgba(255,255,255,0.03)",
-                                    color: customization.wordMode === m.id ? "#8AB9FF" : "#E8EEF7",
-                                  }}
-                                >
-                                  {m.title}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* SHEET 2: AUDIO & RECITERS */}
-                      {activeMobileSheet === "audio" && (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                          <div>
-                            <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#8AB9FF", marginBottom: 8 }}>
-                              اختر القارئ المعتمد لتلاوة المشهد:
-                            </label>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                              {RECITERS.map((r) => (
-                                <button
-                                  key={r.id}
-                                  type="button"
-                                  onClick={async () => {
-                                    setIsLoadingAudio(true);
-                                    try {
-                                      const url = getReciterAudioUrl(result.surah, result.fromAyah, r.id);
-                                      if (previewAudioRef.current) {
-                                        previewAudioRef.current.src = url;
-                                        previewAudioRef.current.load();
-                                      }
-                                       setCustomization((c) => ({ ...c, selectedAudioSource: r.id }));
-                                    } finally {
-                                      setIsLoadingAudio(false);
-                                    }
-                                  }}
-                                  style={{
-                                    padding: "10px",
-                                    borderRadius: 10,
-                                    fontSize: 12,
-                                    fontWeight: 600,
-                                    cursor: "pointer",
-                                    textAlign: "right",
-                                    border: customization.selectedAudioSource === r.id ? "2px solid #2B7FFF" : "1px solid rgba(255,255,255,0.08)",
-                                    background: customization.selectedAudioSource === r.id ? "rgba(43,127,255,0.18)" : "rgba(255,255,255,0.03)",
-                                    color: customization.selectedAudioSource === r.id ? "#8AB9FF" : "#E8EEF7",
-                                  }}
-                                >
-                                  <div style={{ fontWeight: 700 }}>{r.name}</div>
-                                  <div style={{ fontSize: 10, color: "rgba(200,210,230,0.6)" }}>{r.en}</div>
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Sync offset */}
-                          <div style={{ background: "rgba(255,255,255,0.03)", padding: 12, borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)" }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                              <span style={{ fontSize: 12, fontWeight: 700 }}>إزاحة مزامنة الصوت:</span>
-                              <span className="force-ltr" style={{ fontSize: 12, color: "#8AB9FF", fontWeight: 700 }}>
-                                {customization.syncOffsetSec > 0 ? `+${customization.syncOffsetSec}s` : `${customization.syncOffsetSec}s`}
-                              </span>
-                            </div>
-                            <input
-                              type="range"
-                              min="-1"
-                              max="1"
-                              step="0.05"
-                              value={customization.syncOffsetSec}
-                              onChange={(e) => setCustomization((c) => ({ ...c, syncOffsetSec: Number(e.target.value) }))}
-                              style={{ width: "100%", accentColor: "#2B7FFF" }}
-                            />
-                          </div>
-                        </div>
-                      )}
-
-                      {/* SHEET 3: STYLE, FONTS & ANIMATIONS */}
-                      {activeMobileSheet === "style" && (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                          {/* Font Family */}
-                          <div>
-                            <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#8AB9FF", marginBottom: 8 }}>
-                              نوع الخط العربي:
-                            </label>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                              {[
-                                { id: "amiri", label: "خط المصحف الأميري (رسم عثماني)" },
-                                { id: "cairo", label: "خط كايرو (عصري سينمائي)" },
-                              ].map((f) => (
-                                <button
-                                  key={f.id}
-                                  type="button"
-                                  onClick={() => setCustomization((c) => ({ ...c, fontFamily: f.id as FontFamily }))}
-                                  style={{
-                                    padding: "10px",
-                                    borderRadius: 10,
-                                    fontSize: 12,
-                                    fontWeight: 700,
-                                    border: customization.fontFamily === f.id ? "2px solid #2B7FFF" : "1px solid rgba(255,255,255,0.08)",
-                                    background: customization.fontFamily === f.id ? "rgba(43,127,255,0.18)" : "rgba(255,255,255,0.03)",
-                                    color: customization.fontFamily === f.id ? "#8AB9FF" : "#E8EEF7",
-                                  }}
-                                >
-                                  {f.label}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Animation Styles */}
-                          <div>
-                            <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#8AB9FF", marginBottom: 8 }}>
-                              حركة الكلمات عند النطق:
-                            </label>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                              {[
-                                { id: "typewriter", label: "آلة كاتبة حية" },
-                                { id: "pop_bounce", label: "انبثاق وارتداد" },
-                                { id: "shimmer_gold", label: "بريق الذهب" },
-                                { id: "flip_reveal", label: "انقلاب سينمائي" },
-                                { id: "glow_pulse", label: "توهج نابض" },
-                                { id: "fade_slide_up", label: "صعود انسيابي" },
-                              ].map((a) => (
-                                <button
-                                  key={a.id}
-                                  type="button"
-                                  onClick={() => setCustomization((c) => ({ ...c, wordAnimation: a.id as AnimationType }))}
-                                  style={{
-                                    padding: "10px",
-                                    borderRadius: 10,
-                                    fontSize: 12,
-                                    fontWeight: 600,
-                                    border: customization.wordAnimation === a.id ? "2px solid #2B7FFF" : "1px solid rgba(255,255,255,0.08)",
-                                    background: customization.wordAnimation === a.id ? "rgba(43,127,255,0.18)" : "rgba(255,255,255,0.03)",
-                                    color: customization.wordAnimation === a.id ? "#8AB9FF" : "#E8EEF7",
-                                  }}
-                                >
-                                  {a.label}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Box Style */}
-                          <div>
-                            <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#8AB9FF", marginBottom: 8 }}>
-                              نمط إطار النصوص:
-                            </label>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                              {[
-                                { id: "glass", label: "زجاجي شفاف فاخر" },
-                                { id: "gold_frame", label: "إطار مذهب إسلامي" },
-                                { id: "dark_cinematic", label: "تعتيم سينمائي ناعم" },
-                                { id: "none", label: "بدون إطار" },
-                              ].map((b) => (
-                                <button
-                                  key={b.id}
-                                  type="button"
-                                  onClick={() => setCustomization((c) => ({ ...c, boxStyle: b.id as BoxStyle }))}
-                                  style={{
-                                    padding: "10px",
-                                    borderRadius: 10,
-                                    fontSize: 12,
-                                    fontWeight: 600,
-                                    border: customization.boxStyle === b.id ? "2px solid #2B7FFF" : "1px solid rgba(255,255,255,0.08)",
-                                    background: customization.boxStyle === b.id ? "rgba(43,127,255,0.18)" : "rgba(255,255,255,0.03)",
-                                    color: customization.boxStyle === b.id ? "#8AB9FF" : "#E8EEF7",
-                                  }}
-                                >
-                                  {b.label}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* SHEET 4: CANVAS & BACKGROUND */}
-                      {activeMobileSheet === "canvas" && (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                          {/* Aspect Ratio */}
-                          <div>
-                            <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#8AB9FF", marginBottom: 8 }}>
-                              أبعاد ومقاس الفيديو:
-                            </label>
-                            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
-                              {(Object.keys(ASPECTS) as AspectKey[]).map((key) => (
-                                <button
-                                  key={key}
-                                  type="button"
-                                  onClick={() => setCustomization((prev) => ({ ...prev, aspect: key }))}
-                                  style={{
-                                    padding: "12px 8px",
-                                    borderRadius: 10,
-                                    fontSize: 13,
-                                    fontWeight: 700,
-                                    border: customization.aspect === key ? "2px solid #2B7FFF" : "1px solid rgba(255,255,255,0.08)",
-                                    background: customization.aspect === key ? "rgba(43,127,255,0.2)" : "rgba(255,255,255,0.03)",
-                                    color: customization.aspect === key ? "#8AB9FF" : "#E8EEF7",
-                                  }}
-                                >
-                                  <div className="force-ltr">{key}</div>
-                                  <div style={{ fontSize: 10, color: "rgba(200,210,230,0.6)", marginTop: 2 }}>
-                                    {ASPECTS[key].label}
-                                  </div>
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Text Vertical Position */}
-                          <div style={{ background: "rgba(255,255,255,0.03)", padding: 12, borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)" }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                              <span style={{ fontSize: 12, fontWeight: 700 }}>ارتفاع النصوص (موضع Y):</span>
-                              <span style={{ fontSize: 12, color: "#8AB9FF", fontWeight: 700 }}>{customization.wordPosY}%</span>
-                            </div>
-                            <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-                              {[
-                                { label: "أعلى (30%)", val: 30 },
-                                { label: "وسط (50%)", val: 50 },
-                                { label: "ريلز (68%)", val: 68 },
-                              ].map((p) => (
-                                <button
-                                  key={p.val}
-                                  type="button"
-                                  onClick={() => setCustomization((c) => ({ ...c, wordPosY: p.val }))}
-                                  style={{
-                                    flex: 1,
-                                    padding: "6px",
-                                    borderRadius: 8,
-                                    fontSize: 11,
-                                    fontWeight: 700,
-                                    border: customization.wordPosY === p.val ? "1px solid #2B7FFF" : "1px solid rgba(255,255,255,0.1)",
-                                    background: customization.wordPosY === p.val ? "rgba(43,127,255,0.2)" : "rgba(255,255,255,0.03)",
-                                    color: customization.wordPosY === p.val ? "#8AB9FF" : "#E8EEF7",
-                                  }}
-                                >
-                                  {p.label}
-                                </button>
-                              ))}
-                            </div>
-                            <input
-                              type="range"
-                              min="20"
-                              max="82"
-                              value={customization.wordPosY}
-                              onChange={(e) => setCustomization((c) => ({ ...c, wordPosY: Number(e.target.value) }))}
-                              style={{ width: "100%", accentColor: "#2B7FFF" }}
-                            />
-                          </div>
-
-                          {/* Background Presets */}
-                          <div>
-                            <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#8AB9FF", marginBottom: 8 }}>
-                              خلفيات جاهزة:
-                            </label>
-                            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
-                              {[
-                                { id: "mosque_night", label: "مسجد ليلي", type: "preset_image" },
-                                { id: "golden_emerald", label: "زخرفة زمردية", type: "preset_image" },
-                                { id: "space_stars", label: "نجوم متحركة", type: "stars" },
-                                { id: "dark_onyx", label: "أسود ملكي", type: "preset_gradient" },
-                                { id: "spiritual_emerald", label: "أخضر روحاني", type: "preset_gradient" },
-                                { id: "midnight_blue", label: "أزرق كحلي", type: "preset_gradient" },
-                              ].map((b) => (
-                                <button
-                                  key={b.id}
-                                  type="button"
-                                  onClick={() => setCustomization((c) => ({ ...c, bgType: b.type as Customization["bgType"], bgPreset: b.id as BgPreset }))}
-                                  style={{
-                                    padding: "10px 4px",
-                                    borderRadius: 10,
-                                    fontSize: 11,
-                                    fontWeight: 700,
-                                    border: customization.bgType === b.type && customization.bgPreset === b.id ? "2px solid #2B7FFF" : "1px solid rgba(255,255,255,0.08)",
-                                    background: customization.bgType === b.type && customization.bgPreset === b.id ? "rgba(43,127,255,0.2)" : "rgba(255,255,255,0.03)",
-                                    color: "#E8EEF7",
-                                  }}
-                                >
-                                  {b.label}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* SHEET 5: TAJWEED & SILENCE */}
-                      {activeMobileSheet === "tajweed" && (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                          {/* Madd vowels hold toggle */}
-                          <div
-                            style={{
-                              background: "rgba(255,255,255,0.03)",
-                              border: "1px solid rgba(255,255,255,0.08)",
-                              borderRadius: 12,
-                              padding: "12px 14px",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                              cursor: "pointer",
-                            }}
-                            onClick={() => setCustomization((c) => ({ ...c, holdMaddVowels: !c.holdMaddVowels }))}
-                          >
-                            <div style={{ paddingLeft: 10 }}>
-                              <div style={{ fontWeight: 700, fontSize: 13, color: "#8AB9FF" }}>
-                                تثبيت الكلمة طوال زمن المد الصوتي (المد بالحركات)
-                              </div>
-                              <div style={{ fontSize: 11, color: "rgba(200,210,230,0.6)", marginTop: 2 }}>
-                                تبقى الكلمة ظاهرة ومضاءة بثبات طوال مد الصوت والمدود (2 إلى 6 حركات)
-                              </div>
-                            </div>
-                            <input
-                              type="checkbox"
-                              checked={customization.holdMaddVowels}
-                              onChange={(e) => setCustomization((c) => ({ ...c, holdMaddVowels: e.target.checked }))}
-                              style={{ width: 18, height: 18, accentColor: "#2B7FFF" }}
-                            />
-                          </div>
-
-                          {/* Silence Gating Toggle */}
-                          <div
-                            style={{
-                              background: "rgba(255,255,255,0.03)",
-                              border: "1px solid rgba(255,255,255,0.08)",
-                              borderRadius: 12,
-                              padding: "12px 14px",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                              cursor: "pointer",
-                            }}
-                            onClick={() => setCustomization((c) => ({ ...c, hideOnSilence: !c.hideOnSilence }))}
-                          >
-                            <div style={{ paddingLeft: 10 }}>
-                              <div style={{ fontWeight: 700, fontSize: 13, color: "#8AB9FF" }}>
-                                إخفاء الكلمات تماماً عند توقف الصوت (السكوت والوقف)
-                              </div>
-                              <div style={{ fontSize: 11, color: "rgba(200,210,230,0.6)", marginTop: 2 }}>
-                                عند أخذ النَفَس أو وقفات القارئ تختفي الكلمات ليعكس المشهد الوقف القرآني
-                              </div>
-                            </div>
-                            <input
-                              type="checkbox"
-                              checked={customization.hideOnSilence}
-                              onChange={(e) => setCustomization((c) => ({ ...c, hideOnSilence: e.target.checked }))}
-                              style={{ width: 18, height: 18, accentColor: "#2B7FFF" }}
-                            />
-                          </div>
-
-                          {/* Repetition badge toggle */}
-                          <div
-                            style={{
-                              background: "rgba(255,255,255,0.03)",
-                              border: "1px solid rgba(255,255,255,0.08)",
-                              borderRadius: 12,
-                              padding: "12px 14px",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                              cursor: "pointer",
-                            }}
-                            onClick={() => setCustomization((c) => ({ ...c, showRepetitionBadge: !c.showRepetitionBadge }))}
-                          >
-                            <div style={{ paddingLeft: 10 }}>
-                              <div style={{ fontWeight: 700, fontSize: 13, color: "#8AB9FF" }}>
-                                إظهار وسم التكرار عند إعادة الكلمات والآيات
-                              </div>
-                              <div style={{ fontSize: 11, color: "rgba(200,210,230,0.6)", marginTop: 2 }}>
-                                عند تكرار القارئ للآية أو الكلمة يظهر وسم توضيحي لإبراز الوقف والابتداء
-                              </div>
-                            </div>
-                            <input
-                              type="checkbox"
-                              checked={customization.showRepetitionBadge}
-                              onChange={(e) => setCustomization((c) => ({ ...c, showRepetitionBadge: e.target.checked }))}
-                              style={{ width: 18, height: 18, accentColor: "#2B7FFF" }}
-                            />
-                          </div>
-
-                          {/* Words Per Stanza Slider */}
-                          <div style={{ background: "rgba(255,255,255,0.03)", padding: 12, borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)" }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                              <span style={{ fontSize: 12, fontWeight: 700 }}>تقطيع الآيات إلى مقاطع موزونة:</span>
-                              <span style={{ fontSize: 12, color: "#8AB9FF", fontWeight: 700 }}>{customization.wordsPerStanza} كلمات</span>
-                            </div>
-                            <input
-                              type="range"
-                              min="5"
-                              max="10"
-                              step="1"
-                              value={customization.wordsPerStanza}
-                              onChange={(e) => setCustomization((c) => ({ ...c, wordsPerStanza: Number(e.target.value) }))}
-                              style={{ width: "100%", accentColor: "#2B7FFF" }}
-                            />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-
           </div>
         )}
 
@@ -5126,6 +3049,7 @@ function drawQuranCanvasFrame(
     customVideo: HTMLVideoElement | null;
     uploadedVideo: HTMLVideoElement | null;
   },
+  isExport = false,
 ) {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
@@ -5198,7 +3122,7 @@ function drawQuranCanvasFrame(
 
   // 5. Render Bounding Box and Words with Y-position
   ctx.save();
-  renderWordsAndBox(ctx, W, H, words, activeWordIdx, isInSpeech, speechRuns, time, custom, result);
+  renderWordsAndBox(ctx, W, H, words, activeWordIdx, isInSpeech, speechRuns, time, custom, result, isExport);
   ctx.restore();
 
   // 6. Draw Live Waveform
@@ -5438,11 +3362,17 @@ function renderWordsAndBox(
   time: number,
   custom: Customization,
   result?: DetectionResult,
+  isExport = false,
 ) {
   const centerY = H * (custom.wordPosY / 100);
   const fontSize = custom.fontSize;
   const glowColor = custom.glowColor;
-  const fontName = custom.fontFamily === "cairo" ? "'Cairo', sans-serif" : "'Amiri', serif";
+  const fontName =
+    custom.fontFamily === "cairo"
+      ? "'Cairo', sans-serif"
+      : custom.fontFamily === "uthmani"
+        ? "'Amiri Quran', 'Amiri', serif"
+        : "'Amiri', serif";
   const speedMult = custom.animationSpeed === "fast" ? 1.45 : custom.animationSpeed === "smooth" ? 0.8 : 1.0;
 
   const boxW = W * custom.boxWidthRatio;
@@ -5459,20 +3389,20 @@ function renderWordsAndBox(
     ctx.save();
     if (custom.boxStyle === "glass") {
       ctx.fillStyle = `rgba(10, 15, 28, ${custom.boxOpacity})`;
-      ctx.strokeStyle = "rgba(43, 127, 255, 0.35)";
+      ctx.strokeStyle = "rgba(212, 175, 55, 0.35)";
       ctx.lineWidth = 1.5;
       roundRect(ctx, boxX, boxY, boxW, boxH, custom.boxBorderRadius);
       ctx.fill();
       ctx.stroke();
     } else if (custom.boxStyle === "gold_frame") {
       ctx.fillStyle = `rgba(7, 10, 18, ${custom.boxOpacity * 0.9})`;
-      ctx.strokeStyle = "#2B7FFF";
+      ctx.strokeStyle = "#D4AF37";
       ctx.lineWidth = 2;
       roundRect(ctx, boxX, boxY, boxW, boxH, custom.boxBorderRadius);
       ctx.fill();
       ctx.stroke();
 
-      ctx.strokeStyle = "rgba(43, 127, 255, 0.35)";
+      ctx.strokeStyle = "rgba(212, 175, 55, 0.4)";
       ctx.lineWidth = 1;
       roundRect(ctx, boxX + 6, boxY + 6, boxW - 12, boxH - 12, Math.max(4, custom.boxBorderRadius - 6));
       ctx.stroke();
@@ -5484,6 +3414,39 @@ function renderWordsAndBox(
       ctx.fillStyle = radial;
       ctx.fillRect(boxX - 20, boxY - 20, boxW + 40, boxH + 40);
     }
+    ctx.restore();
+  }
+
+  // Draw tactile corner framing brackets in live preview to make the cadre clearly visible
+  if (!isExport) {
+    ctx.save();
+    ctx.strokeStyle = "rgba(212, 175, 55, 0.45)";
+    ctx.lineWidth = 1.5;
+    const bl = 16;
+    // Top-left
+    ctx.beginPath();
+    ctx.moveTo(boxX, boxY + bl);
+    ctx.lineTo(boxX, boxY);
+    ctx.lineTo(boxX + bl, boxY);
+    ctx.stroke();
+    // Top-right
+    ctx.beginPath();
+    ctx.moveTo(boxX + boxW - bl, boxY);
+    ctx.lineTo(boxX + boxW, boxY);
+    ctx.lineTo(boxX + boxW, boxY + bl);
+    ctx.stroke();
+    // Bottom-left
+    ctx.beginPath();
+    ctx.moveTo(boxX, boxY + boxH - bl);
+    ctx.lineTo(boxX, boxY + boxH);
+    ctx.lineTo(boxX + bl, boxY + boxH);
+    ctx.stroke();
+    // Bottom-right
+    ctx.beginPath();
+    ctx.moveTo(boxX + boxW - bl, boxY + boxH);
+    ctx.lineTo(boxX + boxW, boxY + boxH);
+    ctx.lineTo(boxX + boxW, boxY + boxH - bl);
+    ctx.stroke();
     ctx.restore();
   }
 
@@ -5853,7 +3816,12 @@ function renderTextLinesCentered(
   custom: Customization,
   _result?: DetectionResult,
 ) {
-  const fontName = custom.fontFamily === "cairo" ? "'Cairo', sans-serif" : "'Amiri', serif";
+  const fontName =
+    custom.fontFamily === "cairo"
+      ? "'Cairo', sans-serif"
+      : custom.fontFamily === "uthmani"
+        ? "'Amiri Quran', 'Amiri', serif"
+        : "'Amiri', serif";
   const speedMult = custom.animationSpeed === "fast" ? 1.45 : custom.animationSpeed === "smooth" ? 0.8 : 1.0;
 
   ctx.save();
