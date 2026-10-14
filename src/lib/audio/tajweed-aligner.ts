@@ -358,3 +358,89 @@ export function alignWordsAcoustically(options: AcousticAlignOptions): TimedWord
 
   return aligned;
 }
+
+/**
+ * Accurately snaps a single word's start and end boundaries to the nearest acoustic vocal onset and offset
+ * directly from the audio buffer or frame energy profile.
+ */
+export function snapWordToAcousticEnergy(
+  word: { start: number; end: number },
+  frames: AudioFrame[],
+  audioBuffer?: AudioBuffer | null,
+  searchWindowSec = 0.35,
+): { start: number; end: number } {
+  let bestStart = word.start;
+  let bestEnd = word.end;
+
+  if (audioBuffer && typeof audioBuffer.getChannelData === "function") {
+    const sr = audioBuffer.sampleRate;
+    const channel = audioBuffer.getChannelData(0);
+    const winSamples = Math.floor(sr * 0.015); // 15ms window
+    const hopSamples = Math.floor(sr * 0.005); // 5ms step
+
+    // Search for onset around word.start
+    const startRangeMin = Math.max(0, Math.floor((word.start - searchWindowSec) * sr));
+    const startRangeMax = Math.min(channel.length - winSamples, Math.floor((word.start + searchWindowSec) * sr));
+
+    let maxOnsetJump = -Infinity;
+    let prevE = 0;
+
+    for (let s = startRangeMin; s < startRangeMax; s += hopSamples) {
+      let sumSq = 0;
+      for (let j = 0; j < winSamples; j++) {
+        const val = channel[s + j] ?? 0;
+        sumSq += val * val;
+      }
+      const rms = Math.sqrt(sumSq / winSamples);
+      const jump = rms - prevE;
+      if (jump > maxOnsetJump && rms > 0.012) {
+        maxOnsetJump = jump;
+        bestStart = s / sr;
+      }
+      prevE = rms;
+    }
+
+    // Search for offset around word.end
+    const endRangeMin = Math.max(0, Math.floor(Math.max(bestStart + 0.15, word.end - searchWindowSec) * sr));
+    const endRangeMax = Math.min(channel.length - winSamples, Math.floor((word.end + searchWindowSec) * sr));
+
+    let minEnergy = Infinity;
+    let foundDecay = false;
+
+    for (let s = endRangeMin; s < endRangeMax; s += hopSamples) {
+      let sumSq = 0;
+      for (let j = 0; j < winSamples; j++) {
+        const val = channel[s + j] ?? 0;
+        sumSq += val * val;
+      }
+      const rms = Math.sqrt(sumSq / winSamples);
+      if (rms < minEnergy && rms < 0.02) {
+        minEnergy = rms;
+        bestEnd = s / sr;
+        foundDecay = true;
+      }
+    }
+
+    if (!foundDecay) {
+      bestEnd = word.end;
+    }
+  } else if (frames.length > 0) {
+    bestStart = findNearestOnset(word.start, frames, searchWindowSec);
+
+    const candidates = frames.filter(
+      (f) => f.start >= Math.max(bestStart + 0.12, word.end - searchWindowSec) && f.start <= word.end + searchWindowSec,
+    );
+    let minRms = Infinity;
+    for (const f of candidates) {
+      if (f.rms < minRms && f.rms < 0.025) {
+        minRms = f.rms;
+        bestEnd = f.start;
+      }
+    }
+  }
+
+  const finalStart = Number(Math.max(0, bestStart).toFixed(3));
+  const finalEnd = Number(Math.max(finalStart + 0.15, bestEnd).toFixed(3));
+
+  return { start: finalStart, end: finalEnd };
+}

@@ -264,17 +264,17 @@ export function StudioTimeline({
           onClick={onTogglePlay}
           aria-label={isPlaying ? "إيقاف مؤقت" : "تشغيل"}
           style={{
-            border: "none",
             borderRadius: 10,
-            padding: "8px 14px",
+            padding: "8px 16px",
             fontSize: 13,
             fontWeight: 700,
             cursor: "pointer",
-            background: isPlaying ? "rgba(239,68,68,0.22)" : "linear-gradient(135deg, #2B7FFF, #1552CC)",
-            color: isPlaying ? "#FCA5A5" : "#0A0D18",
+            background: isPlaying ? "rgba(239,68,68,0.2)" : "rgba(229,195,101,0.22)",
+            color: isPlaying ? "#FCA5A5" : "#E5C365",
+            border: isPlaying ? "1px solid rgba(239,68,68,0.4)" : "1px solid rgba(229,195,101,0.4)",
           }}
         >
-          {isPlaying ? "⏸ إيقاف" : "▶ تشغيل"}
+          {isPlaying ? "إيقاف مؤقت" : "تشغيل التلاوة"}
         </button>
 
         <button
@@ -284,7 +284,7 @@ export function StudioTimeline({
           aria-label="الكلمة السابقة"
           style={{ ...chipButton, opacity: activeIndex <= 0 ? 0.4 : 1 }}
         >
-          ⏮ كلمة
+          السابق
         </button>
         <button
           type="button"
@@ -293,7 +293,7 @@ export function StudioTimeline({
           aria-label="الكلمة التالية"
           style={{ ...chipButton, opacity: activeIndex >= words.length - 1 ? 0.4 : 1 }}
         >
-          كلمة ⏭
+          التالي
         </button>
 
         <span
@@ -307,7 +307,7 @@ export function StudioTimeline({
             color: "#E8EEF7",
           }}
         >
-          <span style={{ color: "#4D9BFF" }}>{timecode(currentTime)}</span>
+          <span style={{ color: "#E5C365" }}>{timecode(currentTime)}</span>
           <span style={{ color: "rgba(200,210,230,0.5)" }}> / {timecode(safeDuration)}</span>
         </span>
 
@@ -327,12 +327,12 @@ export function StudioTimeline({
           style={{
             ...chipButton,
             opacity: activeAyah ? 1 : 0.4,
-            background: loopActive ? "rgba(77,155,255,0.22)" : "rgba(255,255,255,0.06)",
-            color: loopActive ? "#8AB9FF" : "#E8EEF7",
-            border: `1px solid ${loopActive ? "rgba(77,155,255,0.5)" : "rgba(255,255,255,0.14)"}`,
+            background: loopActive ? "rgba(229,195,101,0.22)" : "rgba(255,255,255,0.06)",
+            color: loopActive ? "#E5C365" : "#E8EEF7",
+            border: `1px solid ${loopActive ? "rgba(229,195,101,0.5)" : "rgba(255,255,255,0.14)"}`,
           }}
         >
-          🔁 {loopActive ? "إلغاء التكرار" : "تكرار الآية"}
+          {loopActive ? "إلغاء تكرار الآية" : "تكرار الآية"}
         </button>
 
         <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
@@ -343,7 +343,7 @@ export function StudioTimeline({
             aria-label="تصغير التايملاين"
             style={{ ...chipButton, opacity: zoom <= 1.001 ? 0.4 : 1 }}
           >
-            ➖
+            −
           </button>
           <span style={{ fontSize: 11, color: "rgba(200,210,230,0.65)", minWidth: 38, textAlign: "center" }}>
             {`×${zoom.toFixed(1)}`}
@@ -354,7 +354,7 @@ export function StudioTimeline({
             aria-label="تكبير التايملاين"
             style={chipButton}
           >
-            ➕
+            +
           </button>
           <button
             type="button"
@@ -362,7 +362,7 @@ export function StudioTimeline({
             aria-label="ملاءمة التايملاين"
             style={chipButton}
           >
-            ⤢ ملاءمة
+            ملاءمة العرض
           </button>
         </span>
       </div>

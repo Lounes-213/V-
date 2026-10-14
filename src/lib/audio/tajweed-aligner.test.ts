@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeTajweedWordWeight, alignWordsAcoustically } from "./tajweed-aligner";
+import { computeTajweedWordWeight, alignWordsAcoustically, snapWordToAcousticEnergy } from "./tajweed-aligner";
 
 describe("computeTajweedWordWeight", () => {
   it("assigns highest weight and 6 harakat to Madd Lazim words (الضَّالِّينَ)", () => {
@@ -116,5 +116,23 @@ describe("alignWordsAcoustically", () => {
         expect(aligned[i]!.start).toBeGreaterThanOrEqual(aligned[i - 1]!.start);
       }
     }
+  });
+
+  it("snaps word boundaries to acoustic onset using snapWordToAcousticEnergy", () => {
+    const frames = [
+      { start: 0.8, end: 0.82, rms: 0.002, zcr: 0.01, isSpeech: false },
+      { start: 0.9, end: 0.92, rms: 0.003, zcr: 0.01, isSpeech: false },
+      { start: 1.0, end: 1.02, rms: 0.08, zcr: 0.05, isSpeech: true }, // Sharp vocal onset at 1.0s
+      { start: 1.1, end: 1.12, rms: 0.12, zcr: 0.05, isSpeech: true },
+      { start: 1.5, end: 1.52, rms: 0.09, zcr: 0.04, isSpeech: true },
+      { start: 1.6, end: 1.62, rms: 0.005, zcr: 0.01, isSpeech: false }, // Vocal decay at 1.6s
+      { start: 1.7, end: 1.72, rms: 0.002, zcr: 0.01, isSpeech: false },
+    ];
+
+    // Word roughly estimated at [0.95, 1.7]
+    const snapped = snapWordToAcousticEnergy({ start: 0.95, end: 1.7 }, frames);
+    expect(snapped.start).toBeCloseTo(1.0, 1);
+    expect(snapped.end).toBeLessThanOrEqual(1.7);
+    expect(snapped.end).toBeGreaterThan(snapped.start);
   });
 });

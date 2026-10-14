@@ -2,9 +2,226 @@
 
 import * as React from "react";
 import { analyzeSound, speechRanges, type SoundAnalysis } from "@/lib/audio/voice-activity";
-import { computeTajweedWordWeight, alignWordsAcoustically } from "@/lib/audio/tajweed-aligner";
+import { computeTajweedWordWeight, alignWordsAcoustically, snapWordToAcousticEnergy } from "@/lib/audio/tajweed-aligner";
 import { ALL_SURAHS } from "@/lib/quran/surahs-data";
 import { StudioTimeline, type TimelineLoop, type TimelineWord } from "@/components/quran/studio-timeline";
+
+/* -------------------------------------------------- MONOLINE SVG ICONS */
+
+function IconPlay({ size = 16, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={color} aria-hidden="true">
+      <path d="M7 4.5V19.5L19 12L7 4.5Z" />
+    </svg>
+  );
+}
+
+function IconPause({ size = 16, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={color} aria-hidden="true">
+      <path d="M6 5H10V19H6V5ZM14 5H18V19H14V5Z" />
+    </svg>
+  );
+}
+
+function IconRotateCcw({ size = 15, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+      <path d="M3 3v5h5" />
+    </svg>
+  );
+}
+
+function IconVolume({ size = 15, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+      <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" />
+    </svg>
+  );
+}
+
+function IconVolumeMute({ size = 15, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+      <line x1="23" y1="9" x2="17" y2="15" />
+      <line x1="17" y1="9" x2="23" y2="15" />
+    </svg>
+  );
+}
+
+function IconCaptions({ size = 18, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="2" y="4" width="20" height="16" rx="4" />
+      <path d="M7 15h3M14 15h3M7 11h10" />
+    </svg>
+  );
+}
+
+function IconAudioWave({ size = 18, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 12h2M7 8v8M11 5v14M15 9v6M19 11v2M21 12h1" />
+    </svg>
+  );
+}
+
+function IconDesign({ size = 18, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+    </svg>
+  );
+}
+
+function IconCanvas({ size = 18, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="3" width="18" height="18" rx="3" />
+      <line x1="9" y1="3" x2="9" y2="21" />
+    </svg>
+  );
+}
+
+function IconTajweed({ size = 18, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <polyline points="12 6 12 12 16 14" />
+    </svg>
+  );
+}
+
+function IconAcoustic({ size = 15, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 2v20M17 5v14M7 9v6M22 10v4M2 10v4" />
+    </svg>
+  );
+}
+
+function IconTarget({ size = 15, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="10" />
+      <circle cx="12" cy="12" r="4" />
+      <line x1="12" y1="2" x2="12" y2="4" />
+      <line x1="12" y1="20" x2="12" y2="22" />
+      <line x1="2" y1="12" x2="4" y2="12" />
+      <line x1="20" y1="12" x2="22" y2="12" />
+    </svg>
+  );
+}
+
+function IconExport({ size = 15, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
+    </svg>
+  );
+}
+
+function IconCheck({ size = 15, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
+function IconChevronRight({ size = 16, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="9 18 15 12 9 6" />
+    </svg>
+  );
+}
+
+function IconPlus({ size = 14, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  );
+}
+
+function IconTrash({ size = 14, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    </svg>
+  );
+}
+
+function IconRepeat({ size = 14, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="17 1 21 5 17 9" />
+      <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+      <polyline points="7 23 3 19 7 15" />
+      <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+    </svg>
+  );
+}
+
+function IconStepBack({ size = 14, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <line x1="19" y1="5" x2="19" y2="19" />
+      <polygon points="19 12 5 19 5 5 19 12" />
+    </svg>
+  );
+}
+
+function IconStepForward({ size = 14, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <line x1="5" y1="5" x2="5" y2="19" />
+      <polygon points="5 12 19 19 19 5 5 12" />
+    </svg>
+  );
+}
+
+function IconSliders({ size = 14, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <line x1="4" y1="21" x2="4" y2="14" />
+      <line x1="4" y1="10" x2="4" y2="3" />
+      <line x1="12" y1="21" x2="12" y2="12" />
+      <line x1="12" y1="8" x2="12" y2="3" />
+      <line x1="20" y1="21" x2="20" y2="16" />
+      <line x1="20" y1="12" x2="20" y2="3" />
+      <line x1="1" y1="14" x2="7" y2="14" />
+      <line x1="9" y1="8" x2="15" y2="8" />
+      <line x1="17" y1="16" x2="23" y2="16" />
+    </svg>
+  );
+}
+
+function IconQuran({ size = 20, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+      <line x1="8" y1="7" x2="16" y2="7" />
+      <line x1="8" y1="11" x2="14" y2="11" />
+    </svg>
+  );
+}
+
+function IconX({ size = 16, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
 
 /* ------------------------------------------------------------------ types */
 
@@ -1356,6 +1573,57 @@ export default function QuranVideoPage() {
     seekTo(duplicatedAyahWords[0]!.start);
   }, [syncedData, seekTo]);
 
+  const handleAcousticSnapWord = React.useCallback((index: number) => {
+    if (!syncedData) return;
+    const target = syncedData.words[index];
+    if (!target) return;
+
+    const snapped = snapWordToAcousticEnergy(
+      target,
+      syncedData.analysis?.frames ?? [],
+      syncedData.audioBuffer,
+      0.45
+    );
+
+    const newWords = [...syncedData.words];
+    newWords[index] = {
+      ...target,
+      start: snapped.start,
+      end: snapped.end,
+    };
+    newWords.sort((a, b) => a.start - b.start);
+    const speechRuns = newWords.map((w) => ({ start: w.start, end: w.end }));
+
+    setSyncedData({
+      ...syncedData,
+      words: newWords,
+      speechRuns,
+    });
+    seekTo(snapped.start);
+  }, [syncedData, seekTo]);
+
+  const handleAcousticSnapAll = React.useCallback(() => {
+    if (!syncedData || !syncedData.words.length) return;
+    const frames = syncedData.analysis?.frames ?? [];
+    const buf = syncedData.audioBuffer;
+    const newWords = syncedData.words.map((w) => {
+      const snapped = snapWordToAcousticEnergy(w, frames, buf, 0.45);
+      return {
+        ...w,
+        start: snapped.start,
+        end: snapped.end,
+      };
+    });
+    newWords.sort((a, b) => a.start - b.start);
+    const speechRuns = newWords.map((w) => ({ start: w.start, end: w.end }));
+
+    setSyncedData({
+      ...syncedData,
+      words: newWords,
+      speechRuns,
+    });
+  }, [syncedData]);
+
   const toolChipBtn: React.CSSProperties = {
     border: "1px solid rgba(255, 255, 255, 0.14)",
     borderRadius: 8,
@@ -1390,11 +1658,11 @@ export default function QuranVideoPage() {
         {selectedWord && selectedWordIdx !== null ? (
           <div
             style={{
-              background: "linear-gradient(135deg, rgba(43,127,255,0.18) 0%, rgba(15,22,40,0.85) 100%)",
-              border: "1px solid rgba(43,127,255,0.45)",
+              background: "rgba(18, 22, 32, 0.95)",
+              border: "1px solid rgba(255, 255, 255, 0.1)",
               borderRadius: 16,
               padding: "16px",
-              boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+              boxShadow: "0 10px 30px rgba(0, 0, 0, 0.45)",
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
@@ -1402,17 +1670,17 @@ export default function QuranVideoPage() {
                 <span
                   style={{
                     fontSize: 11,
-                    background: "rgba(255,184,0,0.2)",
-                    color: "#FFD700",
-                    border: "1px solid rgba(255,184,0,0.4)",
-                    padding: "2px 8px",
-                    borderRadius: 6,
+                    background: "rgba(212, 175, 55, 0.12)",
+                    color: "#E5C365",
+                    border: "1px solid rgba(212, 175, 55, 0.35)",
+                    padding: "3px 10px",
+                    borderRadius: 999,
                     fontWeight: 700,
                   }}
                 >
                   الكلمة #{selectedWordIdx + 1}
                 </span>
-                <span style={{ fontSize: 12, color: "rgba(200,210,230,0.7)" }}>
+                <span style={{ fontSize: 12, color: "rgba(220,230,245,0.7)" }}>
                   الآية {selectedWord.ayah}
                 </span>
               </div>
@@ -1421,45 +1689,51 @@ export default function QuranVideoPage() {
                   type="button"
                   onClick={() => playWordSlice(selectedWord.start, selectedWord.end)}
                   style={{
-                    padding: "5px 12px",
+                    padding: "6px 12px",
                     borderRadius: 8,
                     fontSize: 12,
                     fontWeight: 700,
-                    background: "linear-gradient(135deg, #2B7FFF, #1552CC)",
-                    color: "#0A0D18",
-                    border: "none",
+                    background: "rgba(255, 255, 255, 0.08)",
+                    border: "1px solid rgba(255, 255, 255, 0.15)",
+                    color: "#F1F5F9",
                     cursor: "pointer",
                     display: "flex",
                     alignItems: "center",
-                    gap: 4,
+                    gap: 6,
                   }}
                 >
-                  ▶️ استماع
+                  <IconPlay size={13} /> استماع
                 </button>
                 <button
                   type="button"
                   onClick={() => handleDuplicateWord(selectedWordIdx)}
                   style={{
                     ...toolChipBtn,
-                    padding: "5px 10px",
+                    padding: "6px 10px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
                   }}
                   title="تكرار الكلمة مباشرة بعد هذا الموضع"
                 >
-                  ➕ تكرار
+                  <IconPlus size={13} /> تكرار
                 </button>
                 <button
                   type="button"
                   onClick={() => handleDeleteWord(selectedWordIdx)}
                   style={{
                     ...toolChipBtn,
-                    padding: "5px 10px",
-                    background: "rgba(239,68,68,0.15)",
+                    padding: "6px 10px",
+                    background: "rgba(239,68,68,0.12)",
                     color: "#FCA5A5",
-                    border: "1px solid rgba(239,68,68,0.3)",
+                    border: "1px solid rgba(239,68,68,0.25)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
                   }}
                   title="حذف الكلمة"
                 >
-                  🗑️
+                  <IconTrash size={14} />
                 </button>
               </div>
             </div>
@@ -1470,12 +1744,33 @@ export default function QuranVideoPage() {
                 style={{
                   fontSize: 32,
                   fontFamily: "'Amiri', serif",
-                  color: "#FFE885",
-                  textShadow: "0 0 16px rgba(255,215,0,0.4)",
+                  color: "#F5D77F",
+                  textShadow: "0 0 16px rgba(212, 175, 55, 0.35)",
                 }}
               >
                 « {selectedWord.text} »
               </span>
+            </div>
+
+            {/* High-Precision Acoustic Align Button for Selected Word */}
+            <div style={{ marginBottom: 12 }}>
+              <button
+                type="button"
+                onClick={() => handleAcousticSnapWord(selectedWordIdx)}
+                style={{
+                  ...primaryBtn,
+                  padding: "9px 14px",
+                  fontSize: 12,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                }}
+                title="تحديد موضع البداية والنهاية الدقيق للكلمة من طاقة الصوت الأصلية"
+              >
+                <IconAcoustic size={15} color="#080B11" />
+                ضبط صوتي دقيق للكلمة من الصوت الأصلي (Acoustic Snap)
+              </button>
             </div>
 
             {/* Timing details pill */}
@@ -1545,13 +1840,18 @@ export default function QuranVideoPage() {
                     ...toolChipBtn,
                     width: "100%",
                     fontSize: 11,
-                    background: "rgba(43,127,255,0.2)",
-                    color: "#8AB9FF",
-                    border: "1px solid rgba(43,127,255,0.4)",
+                    background: "rgba(212, 175, 55, 0.12)",
+                    color: "#E5C365",
+                    border: "1px solid rgba(212, 175, 55, 0.35)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
                   }}
                   title="مطابقة بداية الكلمة مع موضع تشغيل الصوت الحالي"
                 >
-                  📍 ضبط عند المؤشر ({currentTime.toFixed(2)}s)
+                  <IconTarget size={13} />
+                  ضبط عند المؤشر ({currentTime.toFixed(2)}s)
                 </button>
               </div>
 
@@ -1590,13 +1890,18 @@ export default function QuranVideoPage() {
                     ...toolChipBtn,
                     width: "100%",
                     fontSize: 11,
-                    background: "rgba(43,127,255,0.2)",
-                    color: "#8AB9FF",
-                    border: "1px solid rgba(43,127,255,0.4)",
+                    background: "rgba(212, 175, 55, 0.12)",
+                    color: "#E5C365",
+                    border: "1px solid rgba(212, 175, 55, 0.35)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
                   }}
                   title="مطابقة نهاية الكلمة مع موضع تشغيل الصوت الحالي"
                 >
-                  📍 ضبط عند المؤشر ({currentTime.toFixed(2)}s)
+                  <IconTarget size={13} />
+                  ضبط عند المؤشر ({currentTime.toFixed(2)}s)
                 </button>
               </div>
             </div>
@@ -1617,8 +1922,8 @@ export default function QuranVideoPage() {
                 <span style={{ fontSize: 11, color: "#F6AD55", fontWeight: 700 }}>
                   {selectedWord.hasMadd
                     ? selectedWord.maddHarakat
-                      ? `مد ${selectedWord.maddHarakat} حركات`
-                      : "مد متصل/لازم"
+                    ? `مد ${selectedWord.maddHarakat} حركات`
+                    : "مد متصل/لازم"
                     : "مد طبيعي (حركتان)"}
                 </span>
               </div>
@@ -1657,9 +1962,18 @@ export default function QuranVideoPage() {
                   seekTo(words[prev]!.start);
                 }}
                 disabled={selectedWordIdx <= 0}
-                style={{ ...toolChipBtn, padding: "6px 14px", fontSize: 12, opacity: selectedWordIdx <= 0 ? 0.4 : 1 }}
+                style={{
+                  ...toolChipBtn,
+                  padding: "7px 14px",
+                  fontSize: 12,
+                  opacity: selectedWordIdx <= 0 ? 0.4 : 1,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
               >
-                ⏮️ الكلمة السابقة
+                <IconStepBack size={13} />
+                الكلمة السابقة
               </button>
               <button
                 type="button"
@@ -1671,12 +1985,16 @@ export default function QuranVideoPage() {
                 disabled={selectedWordIdx >= words.length - 1}
                 style={{
                   ...toolChipBtn,
-                  padding: "6px 14px",
+                  padding: "7px 14px",
                   fontSize: 12,
                   opacity: selectedWordIdx >= words.length - 1 ? 0.4 : 1,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
                 }}
               >
-                الكلمة التالية ⏭️
+                الكلمة التالية
+                <IconStepForward size={13} />
               </button>
             </div>
           </div>
@@ -1684,9 +2002,29 @@ export default function QuranVideoPage() {
 
         {/* 2. Ayahs and Word Pills List (with silence detection) */}
         <div>
-          <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#8AB9FF", marginBottom: 8 }}>
-            قائمة الآيات والكلمات (انقر على أي كلمة لتعديل توقيتها أو تكرارها):
-          </label>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, flexWrap: "wrap", gap: 8 }}>
+            <label style={{ fontSize: 13, fontWeight: 700, color: "#E5C365", margin: 0 }}>
+              قائمة الآيات والكلمات:
+            </label>
+            <button
+              type="button"
+              onClick={handleAcousticSnapAll}
+              style={{
+                ...ghostBtn,
+                padding: "6px 12px",
+                fontSize: 12,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                borderColor: "rgba(212, 175, 55, 0.4)",
+                color: "#E5C365",
+              }}
+              title="محاذاة كامل الكلمات مع ذبذبات الطاقة الصوتية الأصلية تلقائياً"
+            >
+              <IconAcoustic size={14} />
+              ضبط صوتي تلقائي لكامل المقطع
+            </button>
+          </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {Array.from(ayahsMap.entries()).map(([ayahNum, ayahWordItems]) => {
@@ -1704,7 +2042,7 @@ export default function QuranVideoPage() {
                   key={ayahNum}
                   style={{
                     background: "rgba(255,255,255,0.02)",
-                    border: isLoopingThisAyah ? "1px solid rgba(77,155,255,0.6)" : "1px solid rgba(255,255,255,0.07)",
+                    border: isLoopingThisAyah ? "1px solid rgba(212,175,55,0.6)" : "1px solid rgba(255,255,255,0.07)",
                     borderRadius: 14,
                     padding: "12px",
                   }}
@@ -1740,32 +2078,42 @@ export default function QuranVideoPage() {
                           }
                         }}
                         style={{
-                          padding: "4px 8px",
+                          padding: "5px 10px",
                           borderRadius: 6,
                           fontSize: 11,
-                          background: isLoopingThisAyah ? "rgba(77,155,255,0.3)" : "rgba(255,255,255,0.06)",
-                          color: isLoopingThisAyah ? "#8AB9FF" : "#E8EEF7",
-                          border: `1px solid ${isLoopingThisAyah ? "rgba(77,155,255,0.6)" : "rgba(255,255,255,0.1)"}`,
+                          fontWeight: 600,
+                          background: isLoopingThisAyah ? "rgba(212, 175, 55, 0.2)" : "rgba(255,255,255,0.06)",
+                          color: isLoopingThisAyah ? "#E5C365" : "#E8EEF7",
+                          border: `1px solid ${isLoopingThisAyah ? "rgba(212, 175, 55, 0.5)" : "rgba(255,255,255,0.1)"}`,
                           cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 5,
                         }}
                       >
-                        🔁 {isLoopingThisAyah ? "إلغاء التكرار" : "تكرار الآية"}
+                        <IconRepeat size={12} />
+                        {isLoopingThisAyah ? "إلغاء التكرار" : "تكرار الآية"}
                       </button>
                       <button
                         type="button"
                         onClick={() => handleDuplicateAyah(ayahNum)}
                         style={{
-                          padding: "4px 8px",
+                          padding: "5px 10px",
                           borderRadius: 6,
                           fontSize: 11,
+                          fontWeight: 600,
                           background: "rgba(255,255,255,0.06)",
                           color: "#E8EEF7",
                           border: "1px solid rgba(255,255,255,0.1)",
                           cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 5,
                         }}
                         title="مضاعفة كلمات الآية"
                       >
-                        ➕ مضاعفة
+                        <IconPlus size={12} />
+                        مضاعفة الآية
                       </button>
                     </div>
                   </div>
@@ -2067,11 +2415,14 @@ export default function QuranVideoPage() {
             padding-bottom: 84px !important;
           }
           .canvas-frame-container {
-            max-height: 38vh !important;
+            max-height: 33vh !important;
             width: auto !important;
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
           }
           .canvas-frame-container canvas {
-            max-height: 38vh !important;
+            max-height: 33vh !important;
             width: auto !important;
             margin: 0 auto !important;
           }
@@ -2081,16 +2432,16 @@ export default function QuranVideoPage() {
             bottom: 0 !important;
             left: 0 !important;
             right: 0 !important;
-            height: 64px !important;
-            background: rgba(8, 12, 22, 0.97) !important;
+            height: 60px !important;
+            background: rgba(11, 13, 19, 0.98) !important;
             backdrop-filter: blur(20px) !important;
             -webkit-backdrop-filter: blur(20px) !important;
-            border-top: 1px solid rgba(43, 127, 255, 0.35) !important;
+            border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
             z-index: 95 !important;
             padding: 4px 6px !important;
             align-items: center !important;
             justify-content: space-around !important;
-            box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.8) !important;
+            box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.9) !important;
           }
           .mobile-dock-btn {
             display: flex !important;
@@ -2109,14 +2460,14 @@ export default function QuranVideoPage() {
             transition: all 0.15s ease !important;
           }
           .mobile-dock-btn.active {
-            color: #8AB9FF !important;
-            background: rgba(43, 127, 255, 0.18) !important;
+            color: #E5C365 !important;
+            background: rgba(212, 175, 55, 0.14) !important;
           }
           .mobile-bottom-sheet-backdrop {
             display: block !important;
             position: fixed !important;
             inset: 0 !important;
-            background: rgba(0, 0, 0, 0.5) !important;
+            background: rgba(0, 0, 0, 0.6) !important;
             backdrop-filter: blur(3px) !important;
             -webkit-backdrop-filter: blur(3px) !important;
             z-index: 98 !important;
@@ -2127,16 +2478,16 @@ export default function QuranVideoPage() {
             bottom: 0 !important;
             left: 0 !important;
             right: 0 !important;
-            max-height: 58vh !important;
-            height: 58vh !important;
-            background: rgba(10, 14, 26, 0.98) !important;
+            max-height: 62vh !important;
+            height: 62vh !important;
+            background: rgba(13, 16, 24, 0.98) !important;
             backdrop-filter: blur(24px) !important;
             -webkit-backdrop-filter: blur(24px) !important;
-            border-top: 1px solid rgba(43, 127, 255, 0.45) !important;
+            border-top: 1px solid rgba(255, 255, 255, 0.12) !important;
             border-radius: 22px 22px 0 0 !important;
             z-index: 99 !important;
             flex-direction: column !important;
-            box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.85) !important;
+            box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.9) !important;
             animation: sheetSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
           }
           .tab-scroll-header {
@@ -2229,9 +2580,10 @@ export default function QuranVideoPage() {
                 </h4>
                 <button
                   onClick={() => setShowEditAyahModal(false)}
-                  style={{ background: "none", border: "none", color: "#ccc", cursor: "pointer", fontSize: 20, padding: 4 }}
+                  style={{ background: "none", border: "none", color: "#ccc", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 6 }}
+                  title="إغلاق"
                 >
-                  ✕
+                  <IconX size={18} />
                 </button>
               </div>
 
@@ -2481,8 +2833,8 @@ export default function QuranVideoPage() {
               {stage === "idle" && (
                 <div style={{ marginTop: 32, paddingTop: 22, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 14 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#E6CA65", direction: "rtl" }}>
-                      ✨ جرّب فوراً بنقرة واحدة (تلاوات نموذجية جاهزة بدقة 9:16):
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#E5C365", direction: "rtl" }}>
+                      نماذج تلاوة جاهزة للتجربة الفورية (دقة 9:16):
                     </span>
                   </div>
                   <div
@@ -2593,8 +2945,8 @@ export default function QuranVideoPage() {
             {/* Verse Range Banner with Quick Adjustment */}
             <div
               style={{
-                background: "linear-gradient(135deg, rgba(43,127,255,0.12) 0%, rgba(15,22,38,0.7) 100%)",
-                border: "1px solid rgba(43,127,255,0.32)",
+                background: "rgba(18, 22, 32, 0.95)",
+                border: "1px solid rgba(255, 255, 255, 0.08)",
                 borderRadius: 18,
                 padding: "16px 22px",
                 display: "flex",
@@ -2602,6 +2954,7 @@ export default function QuranVideoPage() {
                 alignItems: "center",
                 justifyContent: "space-between",
                 gap: 14,
+                boxShadow: "0 8px 24px rgba(0, 0, 0, 0.4)",
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 14, direction: "rtl" }}>
@@ -2610,29 +2963,27 @@ export default function QuranVideoPage() {
                     width: 44,
                     height: 44,
                     borderRadius: 12,
-                    background: "rgba(43,127,255,0.18)",
-                    border: "1px solid rgba(43,127,255,0.45)",
+                    background: "rgba(212, 175, 55, 0.12)",
+                    border: "1px solid rgba(212, 175, 55, 0.35)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    fontSize: 20,
-                    color: "#2B7FFF",
                   }}
                 >
-                  ۞
+                  <IconQuran size={22} color="#E5C365" />
                 </div>
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4, flexWrap: "wrap" }}>
-                    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#FFE885" }}>
+                    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#F5D77F" }}>
                       سورة {result.surahName || ALL_SURAHS.find((s) => s.number === result.surah)?.nameArabic || ""} — {result.fromAyah === result.toAyah ? (result.isPartial ? `جزء من الآية ${result.fromAyah}` : `الآية ${result.fromAyah}`) : `الآيات ${result.fromAyah} إلى ${result.toAyah}`}
                     </h3>
                     {result.isPartial && (
-                      <span style={{ ...goldBadge, background: "rgba(59, 130, 246, 0.2)", color: "#93C5FD", border: "1px solid rgba(59, 130, 246, 0.4)" }}>
+                      <span style={{ ...goldBadge, background: "rgba(212, 175, 55, 0.15)", color: "#E5C365" }}>
                         مقطع من آية
                       </span>
                     )}
                     {result.fromAyah < result.toAyah && (
-                      <span style={{ ...goldBadge, background: "rgba(16, 185, 129, 0.2)", color: "#6EE7B7", border: "1px solid rgba(16, 185, 129, 0.4)" }}>
+                      <span style={{ ...goldBadge, background: "rgba(52, 211, 153, 0.15)", color: "#34D399", border: "1px solid rgba(52, 211, 153, 0.35)" }}>
                         متعدد الآيات ({result.toAyah - result.fromAyah + 1} آيات)
                       </span>
                     )}
@@ -2648,15 +2999,15 @@ export default function QuranVideoPage() {
                 <button
                   onClick={() => setShowEditAyahModal(true)}
                   style={{
-                    ...primaryBtn,
-                    width: "auto",
+                    ...ghostBtn,
                     padding: "8px 16px",
                     fontSize: 13,
-                    background: "rgba(43,127,255,0.18)",
-                    border: "1px solid rgba(43,127,255,0.45)",
-                    color: "#8AB9FF",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
                   }}
                 >
+                  <IconSliders size={14} />
                   تعديل نطاق الآيات
                 </button>
 
@@ -2667,9 +3018,17 @@ export default function QuranVideoPage() {
                     setResult(null);
                     setSyncedData(null);
                   }}
-                  style={{ ...ghostBtn, padding: "8px 16px", fontSize: 13 }}
+                  style={{
+                    ...ghostBtn,
+                    padding: "8px 16px",
+                    fontSize: 13,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
                 >
-                  تلاوة أو مقطع جديد
+                  <IconChevronRight size={14} />
+                  تلاوة جديدة
                 </button>
 
                 <button
@@ -2684,11 +3043,10 @@ export default function QuranVideoPage() {
                     display: "flex",
                     alignItems: "center",
                     gap: 6,
-                    background: "linear-gradient(135deg, #2B7FFF, #A8C7FF)",
-                    boxShadow: "0 4px 14px rgba(43,127,255,0.4)",
                   }}
                 >
-                  🎬 {stage === "exporting" ? `${exportProgress}%` : "تصدير الفيديو"}
+                  <IconExport size={15} color="#080B11" />
+                  {stage === "exporting" ? `${exportProgress}%` : "تصدير الفيديو"}
                 </button>
               </div>
             </div>
@@ -2725,12 +3083,12 @@ export default function QuranVideoPage() {
                               style={{
                                 border: "none",
                                 borderRadius: 8,
-                                padding: "6px 10px",
+                                padding: "6px 11px",
                                 fontSize: 12,
                                 fontWeight: 700,
                                 cursor: "pointer",
-                                background: active ? "linear-gradient(135deg, #2B7FFF, #1552CC)" : "transparent",
-                                color: active ? "#0A0D18" : "rgba(220,230,245,0.75)",
+                                background: active ? "linear-gradient(135deg, #E5C365, #D4AF37)" : "transparent",
+                                color: active ? "#080B11" : "rgba(220,230,245,0.75)",
                               }}
                             >
                               {key}
@@ -2745,9 +3103,9 @@ export default function QuranVideoPage() {
                         borderRadius: 999,
                         fontSize: 12,
                         fontWeight: 600,
-                        background: isInSpeechNow ? "rgba(76,175,80,0.2)" : "rgba(43,127,255,0.15)",
-                        color: isInSpeechNow ? "#4CAF50" : "#2B7FFF",
-                        border: `1px solid ${isInSpeechNow ? "rgba(76,175,80,0.4)" : "rgba(43,127,255,0.3)"}`,
+                        background: isInSpeechNow ? "rgba(52, 211, 153, 0.15)" : "rgba(255,255,255,0.06)",
+                        color: isInSpeechNow ? "#34D399" : "rgba(220,230,245,0.7)",
+                        border: `1px solid ${isInSpeechNow ? "rgba(52, 211, 153, 0.35)" : "rgba(255,255,255,0.1)"}`,
                       }}
                     >
                       {isInSpeechNow ? "تلاوة جارية" : "وقف وسكوت"}
@@ -2765,7 +3123,7 @@ export default function QuranVideoPage() {
                       margin: "0 auto",
                       borderRadius: 22,
                       overflow: "hidden",
-                      boxShadow: "0 16px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(43,127,255,0.3)",
+                      boxShadow: "0 16px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.1)",
                       background: "#05070D",
                     }}
                   >
@@ -2788,7 +3146,7 @@ export default function QuranVideoPage() {
                         style={{
                           position: "absolute",
                           inset: 0,
-                          background: "rgba(0,0,0,0.3)",
+                          background: "rgba(0,0,0,0.35)",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
@@ -2798,19 +3156,17 @@ export default function QuranVideoPage() {
                       >
                         <div
                           style={{
-                            width: 66,
-                            height: 66,
+                            width: 64,
+                            height: 64,
                             borderRadius: "50%",
-                            background: "linear-gradient(135deg, #2B7FFF, #1552CC)",
+                            background: "linear-gradient(135deg, #E5C365, #D4AF37)",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
-                            fontSize: 26,
-                            color: "#0A0D18",
-                            boxShadow: "0 8px 24px rgba(43,127,255,0.5)",
+                            boxShadow: "0 8px 24px rgba(212,175,55,0.35)",
                           }}
                         >
-                          ▶
+                          <IconPlay size={28} color="#080B11" />
                         </div>
                       </div>
                     )}
@@ -2831,7 +3187,7 @@ export default function QuranVideoPage() {
                         onChange={handleSeek}
                         style={{
                           flex: 1,
-                          accentColor: "#2B7FFF",
+                          accentColor: "#D4AF37",
                           cursor: "pointer",
                         }}
                       />
@@ -2848,30 +3204,55 @@ export default function QuranVideoPage() {
                             ...primaryBtn,
                             width: "auto",
                             padding: "8px 18px",
-                            fontSize: 14,
+                            fontSize: 13,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
                           }}
                         >
-                          {isPlaying ? "⏸️ إيقاف" : "▶️ تشغيل"}
+                          {isPlaying ? (
+                            <>
+                              <IconPause size={14} color="#080B11" />
+                              إيقاف مؤقت
+                            </>
+                          ) : (
+                            <>
+                              <IconPlay size={14} color="#080B11" />
+                              تشغيل التلاوة
+                            </>
+                          )}
                         </button>
                         <button
                           onClick={() => {
                             if (previewAudioRef.current) previewAudioRef.current.currentTime = 0;
                             setCurrentTime(0);
                           }}
-                          style={{ ...ghostBtn, padding: "8px 14px", fontSize: 13 }}
+                          style={{
+                            ...ghostBtn,
+                            padding: "8px 14px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
                           title="إعادة من البداية"
                         >
-                          🔄
+                          <IconRotateCcw size={15} />
                         </button>
                       </div>
 
                       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                         <button
                           onClick={() => setIsMuted((m) => !m)}
-                          style={{ ...ghostBtn, padding: "8px 14px", fontSize: 13 }}
+                          style={{
+                            ...ghostBtn,
+                            padding: "8px 14px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
                           title={isMuted ? "إلغاء كتم الصوت" : "كتم الصوت"}
                         >
-                          {isMuted ? "🔇" : "🔊"}
+                          {isMuted ? <IconVolumeMute size={15} /> : <IconVolume size={15} />}
                         </button>
                       </div>
                     </div>
@@ -2897,40 +3278,99 @@ export default function QuranVideoPage() {
                       {selectedWordIdx !== null && syncedData.words[selectedWordIdx] && (
                         <div
                           style={{
-                            marginTop: 10,
-                            padding: "8px 12px",
-                            borderRadius: 10,
-                            background: "rgba(43,127,255,0.12)",
-                            border: "1px solid rgba(43,127,255,0.3)",
+                            marginTop: 12,
+                            padding: "10px 14px",
+                            borderRadius: 12,
+                            background: "rgba(18, 22, 32, 0.95)",
+                            border: "1px solid rgba(255, 255, 255, 0.1)",
                             display: "flex",
+                            flexWrap: "wrap",
                             alignItems: "center",
                             justifyContent: "space-between",
+                            gap: 10,
                             direction: "rtl",
                           }}
                         >
-                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            <span style={{ fontSize: 11, color: "rgba(200,210,230,0.6)" }}>الكلمة المحددة:</span>
-                            <span style={{ fontSize: 15, fontFamily: "'Amiri', serif", color: "#FFE885", fontWeight: 700 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                            <span style={{ fontSize: 11, color: "rgba(220,230,245,0.6)" }}>الكلمة المحددة:</span>
+                            <span style={{ fontSize: 16, fontFamily: "'Amiri', serif", color: "#F5D77F", fontWeight: 700 }}>
                               « {syncedData.words[selectedWordIdx].text} »
                             </span>
-                            <span className="force-ltr" style={{ fontSize: 11, color: "#8AB9FF" }}>
+                            <span className="force-ltr" style={{ fontSize: 11, color: "rgba(220,230,245,0.6)" }}>
                               ({syncedData.words[selectedWordIdx].start.toFixed(2)}s - {syncedData.words[selectedWordIdx].end.toFixed(2)}s)
                             </span>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => setActiveMobileSheet("captions")}
-                            style={{
-                              ...toolChipBtn,
-                              fontSize: 11,
-                              padding: "4px 8px",
-                              background: "rgba(43,127,255,0.25)",
-                              color: "#8AB9FF",
-                              border: "1px solid rgba(43,127,255,0.5)",
-                            }}
-                          >
-                            ✂️ تعديل التوقيت والسكت
-                          </button>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                            <button
+                              type="button"
+                              onClick={() => handleAcousticSnapWord(selectedWordIdx)}
+                              style={{
+                                ...ghostBtn,
+                                fontSize: 11,
+                                padding: "5px 10px",
+                                color: "#E5C365",
+                                borderColor: "rgba(212, 175, 55, 0.4)",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 4,
+                              }}
+                              title="ضبط صوتي فوري للكلمة من تردد الصوت الأصلي"
+                            >
+                              <IconAcoustic size={13} />
+                              ضبط صوتي
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSetWordBoundary(selectedWordIdx, "start")}
+                              style={{
+                                ...ghostBtn,
+                                fontSize: 11,
+                                padding: "5px 10px",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 4,
+                              }}
+                              title="مطابقة بداية الكلمة مع المؤشر الحالي"
+                            >
+                              <IconTarget size={13} />
+                              بداية هنا
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const w = selectedWordIdx !== null ? syncedData.words[selectedWordIdx] : undefined;
+                                if (w) playWordSlice(w.start, w.end);
+                              }}
+                              style={{
+                                ...ghostBtn,
+                                fontSize: 11,
+                                padding: "5px 10px",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 4,
+                              }}
+                              title="استماع لمقطع الكلمة"
+                            >
+                              <IconPlay size={12} />
+                              استماع
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setActiveMobileSheet("captions")}
+                              style={{
+                                ...primaryBtn,
+                                fontSize: 11,
+                                padding: "5px 12px",
+                                width: "auto",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 4,
+                              }}
+                            >
+                              <IconSliders size={13} color="#080B11" />
+                              تحرير كامل
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -2944,20 +3384,19 @@ export default function QuranVideoPage() {
                       disabled={stage === "exporting"}
                       style={{
                         ...primaryBtn,
-                        padding: "16px 20px",
-                        fontSize: 16,
+                        padding: "15px 22px",
+                        fontSize: 15,
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
                         gap: 10,
-                        background: "linear-gradient(135deg, #2B7FFF 0%, #A8C7FF 50%, #1552CC 100%)",
-                        boxShadow: "0 8px 24px rgba(43,127,255,0.3)",
                       }}
                     >
+                      <IconExport size={18} color="#080B11" />
                       <span>
                         {stage === "exporting"
-                          ? `جاري التصدير (${exportProgress}%)...`
-                          : `توليد وتحميل الفيديو النهائي (${ASPECTS[customization.aspect].w}×${ASPECTS[customization.aspect].h})`}
+                          ? `جاري تصدير الفيديو (${exportProgress}%)...`
+                          : `تصدير الفيديو النهائي (${ASPECTS[customization.aspect].w}×${ASPECTS[customization.aspect].h})`}
                       </span>
                     </button>
                   </div>
@@ -2988,14 +3427,14 @@ export default function QuranVideoPage() {
                           minWidth: 92,
                           padding: "10px 14px",
                           borderRadius: 10,
-                          border: activeTab === tab.id ? "1px solid rgba(43, 127, 255, 0.6)" : "1px solid rgba(255, 255, 255, 0.05)",
+                          border: activeTab === tab.id ? "1px solid rgba(212, 175, 55, 0.6)" : "1px solid rgba(255, 255, 255, 0.05)",
                           fontSize: 12,
                           fontWeight: 700,
                           cursor: "pointer",
                           transition: "all 0.15s ease",
-                          background: activeTab === tab.id ? "linear-gradient(135deg, #2B7FFF, #1552CC)" : "rgba(255, 255, 255, 0.02)",
-                          color: activeTab === tab.id ? "#0A0D18" : "rgba(220,230,245,0.78)",
-                          boxShadow: activeTab === tab.id ? "0 4px 14px rgba(43,127,255,0.25)" : "none",
+                          background: activeTab === tab.id ? "linear-gradient(135deg, #E5C365, #D4AF37)" : "rgba(255, 255, 255, 0.02)",
+                          color: activeTab === tab.id ? "#080B11" : "rgba(220,230,245,0.78)",
+                          boxShadow: activeTab === tab.id ? "0 4px 14px rgba(212,175,55,0.25)" : "none",
                         }}
                       >
                         {tab.label}
@@ -3581,7 +4020,7 @@ export default function QuranVideoPage() {
                               تشغيل الفيديو الذي قمت برفعه كخلفية متحركة خلف الآيات
                             </div>
                           </div>
-                          <span style={{ fontSize: 16, color: "#2B7FFF" }}>✓</span>
+                          <IconCheck size={16} color="#E5C365" />
                         </div>
                       )}
 
@@ -4038,11 +4477,11 @@ export default function QuranVideoPage() {
                 {/* 1. Fixed Bottom Action Dock (5 Tools) */}
                 <div className="mobile-bottom-dock" style={{ direction: "rtl" }}>
                   {[
-                    { id: "captions", icon: "✂️", label: "الكلمات" },
-                    { id: "audio", icon: "🎵", label: "الصوت" },
-                    { id: "style", icon: "🎨", label: "المظهر" },
-                    { id: "canvas", icon: "🎬", label: "المشهد" },
-                    { id: "tajweed", icon: "⏱️", label: "التجويد" },
+                    { id: "captions", icon: <IconCaptions size={19} />, label: "الكلمات" },
+                    { id: "audio", icon: <IconAudioWave size={19} />, label: "الصوت" },
+                    { id: "style", icon: <IconDesign size={19} />, label: "المظهر" },
+                    { id: "canvas", icon: <IconCanvas size={19} />, label: "المشهد" },
+                    { id: "tajweed", icon: <IconTajweed size={19} />, label: "التجويد" },
                   ].map((tool) => {
                     const isActive = activeMobileSheet === tool.id;
                     return (
@@ -4052,7 +4491,7 @@ export default function QuranVideoPage() {
                         className={`mobile-dock-btn ${isActive ? "active" : ""}`}
                         onClick={() => setActiveMobileSheet(isActive ? null : (tool.id as typeof activeMobileSheet))}
                       >
-                        <span style={{ fontSize: 18 }}>{tool.icon}</span>
+                        <span style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>{tool.icon}</span>
                         <span>{tool.label}</span>
                       </button>
                     );
@@ -4073,10 +4512,10 @@ export default function QuranVideoPage() {
                     {/* Top Grab Handle */}
                     <div
                       style={{
-                        width: 44,
-                        height: 5,
-                        borderRadius: 3,
-                        background: "rgba(255,255,255,0.25)",
+                        width: 40,
+                        height: 4,
+                        borderRadius: 2,
+                        background: "rgba(255,255,255,0.2)",
                         margin: "10px auto 4px",
                         cursor: "pointer",
                       }}
@@ -4100,22 +4539,35 @@ export default function QuranVideoPage() {
                           style={{
                             padding: "6px 12px",
                             borderRadius: 8,
-                            background: isPlaying ? "rgba(239,68,68,0.2)" : "rgba(43,127,255,0.2)",
-                            color: isPlaying ? "#FCA5A5" : "#8AB9FF",
+                            background: isPlaying ? "rgba(239,68,68,0.18)" : "rgba(255,255,255,0.08)",
+                            color: isPlaying ? "#FCA5A5" : "#E2E8F0",
                             border: "none",
                             cursor: "pointer",
                             fontSize: 12,
                             fontWeight: 700,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 5,
                           }}
                         >
-                          {isPlaying ? "⏸️ إيقاف" : "▶️ تشغيل"}
+                          {isPlaying ? (
+                            <>
+                              <IconPause size={13} />
+                              إيقاف
+                            </>
+                          ) : (
+                            <>
+                              <IconPlay size={13} />
+                              تشغيل
+                            </>
+                          )}
                         </button>
-                        <h4 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#8AB9FF" }}>
-                          {activeMobileSheet === "captions" && "✂️ تعديل الكلمات والتوقيتات والسكت"}
-                          {activeMobileSheet === "audio" && "🎵 الصوت والقارئ والمزامنة"}
-                          {activeMobileSheet === "style" && "🎨 المظهر والخط والتأثيرات"}
-                          {activeMobileSheet === "canvas" && "🎬 المشهد والخلفية والأبعاد"}
-                          {activeMobileSheet === "tajweed" && "⏱️ أحكام التجويد والمدود والوقف"}
+                        <h4 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#F5D77F" }}>
+                          {activeMobileSheet === "captions" && "النصوص والتوقيت والسكت"}
+                          {activeMobileSheet === "audio" && "الصوت والقارئ والمزامنة"}
+                          {activeMobileSheet === "style" && "المظهر والخط والتأثيرات"}
+                          {activeMobileSheet === "canvas" && "المشهد والخلفية والأبعاد"}
+                          {activeMobileSheet === "tajweed" && "أحكام التجويد والمدود والوقف"}
                         </h4>
                       </div>
 
@@ -4125,16 +4577,20 @@ export default function QuranVideoPage() {
                         style={{
                           padding: "6px 18px",
                           borderRadius: 999,
-                          background: "linear-gradient(135deg, #2B7FFF, #1552CC)",
-                          color: "#0A0D18",
+                          background: "linear-gradient(135deg, #E5C365, #D4AF37)",
+                          color: "#080B11",
                           border: "none",
                           fontSize: 13,
                           fontWeight: 700,
                           cursor: "pointer",
-                          boxShadow: "0 2px 8px rgba(43,127,255,0.3)",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 5,
+                          boxShadow: "0 2px 10px rgba(212,175,55,0.25)",
                         }}
                       >
-                        ✓ تم
+                        <IconCheck size={14} color="#080B11" />
+                        تم
                       </button>
                     </div>
 
@@ -5699,7 +6155,7 @@ function ProgressBar({ value }: { value: number }) {
         style={{
           height: "100%",
           width: `${Math.min(100, Math.max(0, value))}%`,
-          background: "linear-gradient(90deg, #2B7FFF, #F7E58D)",
+          background: "linear-gradient(90deg, #D4AF37, #F5D77F)",
           borderRadius: 8,
           transition: "width 0.3s ease",
         }}
@@ -5712,41 +6168,44 @@ function ProgressBar({ value }: { value: number }) {
 
 const primaryBtn: React.CSSProperties = {
   width: "100%",
-  padding: "14px 22px",
-  background: "linear-gradient(135deg, #2B7FFF, #1552CC)",
+  padding: "13px 20px",
+  background: "linear-gradient(135deg, #E5C365 0%, #D4AF37 50%, #B89228 100%)",
   border: "none",
   borderRadius: 12,
-  color: "#070A14",
+  color: "#080B11",
   fontWeight: 700,
-  fontSize: 15,
+  fontSize: 14,
+  cursor: "pointer",
+  direction: "rtl",
+  transition: "all 0.15s ease",
+  boxShadow: "0 4px 16px rgba(212, 175, 55, 0.22)",
+};
+
+const dangerBtn: React.CSSProperties = {
+  ...primaryBtn,
+  background: "linear-gradient(135deg, #DC2626, #991B1B)",
+  color: "#fff",
+  boxShadow: "0 4px 16px rgba(220, 38, 38, 0.3)",
+};
+
+const ghostBtn: React.CSSProperties = {
+  padding: "10px 18px",
+  background: "rgba(255, 255, 255, 0.04)",
+  border: "1px solid rgba(255, 255, 255, 0.09)",
+  borderRadius: 12,
+  color: "#E2E8F0",
+  fontWeight: 600,
+  fontSize: 13,
   cursor: "pointer",
   direction: "rtl",
   transition: "all 0.15s ease",
 };
 
-const dangerBtn: React.CSSProperties = {
-  ...primaryBtn,
-  background: "linear-gradient(135deg, #E53935, #B71C1C)",
-  color: "#fff",
-};
-
-const ghostBtn: React.CSSProperties = {
-  padding: "12px 20px",
-  background: "rgba(255, 255, 255, 0.05)",
-  border: "1px solid rgba(255, 255, 255, 0.12)",
-  borderRadius: 12,
-  color: "#E8EEF7",
-  fontWeight: 600,
-  fontSize: 14,
-  cursor: "pointer",
-  direction: "rtl",
-};
-
 const goldBadge: React.CSSProperties = {
-  background: "rgba(43, 127, 255, 0.15)",
-  border: "1px solid rgba(43, 127, 255, 0.4)",
-  color: "#8AB9FF",
-  padding: "4px 14px",
+  background: "rgba(212, 175, 55, 0.12)",
+  border: "1px solid rgba(212, 175, 55, 0.35)",
+  color: "#E5C365",
+  padding: "3px 12px",
   borderRadius: 999,
   fontSize: 12,
   fontWeight: 600,
@@ -5755,11 +6214,11 @@ const goldBadge: React.CSSProperties = {
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
-  padding: "12px 14px",
-  background: "rgba(255, 255, 255, 0.05)",
-  border: "1px solid rgba(43, 127, 255, 0.3)",
+  padding: "11px 14px",
+  background: "rgba(18, 22, 32, 0.8)",
+  border: "1px solid rgba(255, 255, 255, 0.1)",
   borderRadius: 10,
-  color: "#E8EEF7",
+  color: "#F1F5F9",
   fontSize: 14,
   outline: "none",
   direction: "rtl",
