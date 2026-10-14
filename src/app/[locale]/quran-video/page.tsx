@@ -145,6 +145,25 @@ function IconChevronDown({ size = 16, color = "currentColor" }: { size?: number;
   );
 }
 
+function IconUpload({ size = 16, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="17 8 12 3 7 8" />
+      <line x1="12" y1="3" x2="12" y2="15" />
+    </svg>
+  );
+}
+
+function IconBook({ size = 16, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+    </svg>
+  );
+}
+
 /* ------------------------------------------------------------------ types */
 
 type DetectionResult = {
@@ -536,7 +555,9 @@ export default function QuranVideoPage() {
   const [showSettingsModal, setShowSettingsModal] = React.useState<boolean>(false);
   const [exportQuality, setExportQuality] = React.useState<"1080p" | "720p">("1080p");
   const [mobileDrawerOpen, setMobileDrawerOpen] = React.useState<boolean>(true);
-  const [onboardingAudioSource, setOnboardingAudioSource] = React.useState<"instant" | "upload" | "record">("instant");
+  const [entryMode, setEntryMode] = React.useState<"upload" | "preselected">("upload");
+  const [showManualAyahOption, setShowManualAyahOption] = React.useState<boolean>(false);
+  const [selectedReciterId, setSelectedReciterId] = React.useState<number>(7);
   const [onboardingVerses, setOnboardingVerses] = React.useState<{ ayah: number; uthmani: string }[]>([]);
   const [isLoadingPreview, setIsLoadingPreview] = React.useState<boolean>(false);
 
@@ -811,6 +832,12 @@ export default function QuranVideoPage() {
       form.set("consent", "true");
       form.set("file", aiBlob, "recitation.wav");
       form.set("durationSec", String(durationSec));
+      form.set("riwayah", customization.riwayah);
+      if (showManualAyahOption) {
+        form.set("surahHint", String(editSurah));
+        form.set("fromAyahHint", String(editFromAyah));
+        form.set("toAyahHint", String(editToAyah));
+      }
       if (clientTranscribedText) {
         form.set("transcribedText", clientTranscribedText);
       }
@@ -2443,374 +2470,621 @@ export default function QuranVideoPage() {
           </div>
         )}
 
-        {/* ================= ONBOARDING / SETUP STAGE (RIWAYAH & AYAH FIRST) ================= */}
+        {/* ================= ONBOARDING / SETUP STAGE ================= */}
         {(stage === "idle" || stage === "recording" || stage === "processing") && (
-          <div style={{ maxWidth: 840, width: "100%", margin: "0 auto", display: "flex", flexDirection: "column", gap: 20 }}>
-            {/* Onboarding Header */}
-            <div style={{ textAlign: "center", padding: "10px 0" }}>
+          <div style={{ maxWidth: 880, width: "100%", margin: "0 auto", display: "flex", flexDirection: "column", gap: 20 }}>
+            {/* Onboarding Header & App Definition */}
+            <div style={{ textAlign: "center", padding: "12px 0 6px" }}>
               <span style={goldBadge}>
-                تطبيق رِوَايَة الشريف
+                ✦ رِوَايَة | استوديو إنتاج مقاطع القرآن الكريم
               </span>
-              <h2 style={{ fontSize: "clamp(22px, 4vw, 32px)", fontWeight: 900, color: "#0F172A", margin: "12px 0 6px" }}>
-                إعداد وتصميم المقطع القرآني
+              <h2 style={{ fontSize: "clamp(22px, 4vw, 32px)", fontWeight: 900, color: "#0F172A", margin: "14px 0 8px" }}>
+                صمّم مقاطع قرآنية متحركة كلمة بكلمة
               </h2>
-              <p style={{ color: "#64748B", fontSize: 14, margin: 0, maxWidth: 560, marginInline: "auto" }}>
-                حدّد الرواية الشريفة والآيات الكريمة، ثم اختر طريقة إدراج التلاوة للبدء في الإخراج والتصميم
+              <p style={{ color: "#64748B", fontSize: 14, margin: 0, maxWidth: 640, marginInline: "auto", lineHeight: 1.6 }}>
+                تطبيق احترافي متكامل لتحويل التلاوات إلى فيديوهات بصرية سينمائية متحركة بالرسم العثماني الشريف بروايتي <strong>ورش عن نافع</strong> و <strong>حفص عن عاصم</strong>، مع مزامنة ذكية وخلفيات وخطوط عربية راقية.
               </p>
             </div>
 
             <Card>
-              {/* STEP 1: RIWAYAH SELECTION */}
-              <div style={{ marginBottom: 28, borderBottom: "1px solid #F1F5F9", paddingBottom: 24 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#FEF9C3", color: "#854D0E", fontWeight: 800, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    1
-                  </div>
-                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#0F172A" }}>
-                    الرواية الشريفة المعتمدة
-                  </h3>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                  {[
-                    {
-                      id: "hafs" as Riwayah,
-                      title: "رواية حفص عن عاصم",
-                      desc: "مصحف مجمع الملك فهد بالمدينة المنورة",
-                      badge: "الرسم الأكثر انتشاراً",
-                    },
-                    {
-                      id: "warsh" as Riwayah,
-                      title: "رواية ورش عن نافع",
-                      desc: "طريق الأزرق · المصحف الجزائري والمغاربي",
-                      badge: "قراءة أهل المغرب والجزائر",
-                    },
-                  ].map((r) => {
-                    const isSelected = customization.riwayah === r.id;
-                    return (
-                      <button
-                        key={r.id}
-                        type="button"
-                        onClick={() => handleRiwayahChange(r.id)}
-                        style={{
-                          padding: "16px 18px",
-                          borderRadius: 14,
-                          border: isSelected ? "2px solid #D4AF37" : "1px solid #E2E8F0",
-                          background: isSelected ? "linear-gradient(135deg, #FEFDF9 0%, #FFF9EB 100%)" : "#FFFFFF",
-                          boxShadow: isSelected ? "0 8px 24px -4px rgba(212, 175, 55, 0.22)" : "0 1px 3px rgba(0,0,0,0.02)",
-                          textAlign: "right",
-                          cursor: "pointer",
-                          transition: "all 0.15s ease",
-                        }}
-                      >
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                          <span style={{ fontSize: 15, fontWeight: 800, color: isSelected ? "#854D0E" : "#0F172A" }}>
-                            {r.title}
-                          </span>
-                          <span
-                            style={{
-                              fontSize: 11,
-                              fontWeight: 700,
-                              padding: "2px 8px",
-                              borderRadius: 999,
-                              background: isSelected ? "#D4AF37" : "#F1F5F9",
-                              color: isSelected ? "#1A1300" : "#64748B",
-                            }}
-                          >
-                            {r.badge}
-                          </span>
-                        </div>
-                        <p style={{ fontSize: 12, color: "#64748B", margin: 0, lineHeight: 1.5 }}>
-                          {r.desc}
-                        </p>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* STEP 2: AYAH SELECTION & LIVE PREVIEW */}
-              <div style={{ marginBottom: 28, borderBottom: "1px solid #F1F5F9", paddingBottom: 24 }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#FEF9C3", color: "#854D0E", fontWeight: 800, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      2
-                    </div>
-                    <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#0F172A" }}>
-                      تحديد الآيات الكريمة
-                    </h3>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowEditAyahModal(true)}
-                    style={{
-                      ...ghostBtn,
-                      padding: "6px 14px",
-                      fontSize: 12,
-                      border: "1px solid #D4AF37",
-                      color: "#854D0E",
-                      background: "#FEFDF7",
-                    }}
-                  >
-                    بحث بالكلمات في المصحف
-                  </button>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr", gap: 10, marginBottom: 16 }}>
-                  <div>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 5 }}>
-                      السورة الكريمة:
-                    </label>
-                    <select
-                      value={editSurah}
-                      onChange={(e) => {
-                        const sNum = Number(e.target.value);
-                        setEditSurah(sNum);
-                        setEditFromAyah(1);
-                        setEditToAyah(Math.min(7, ALL_SURAHS.find((s) => s.number === sNum)?.ayahCount || 1));
-                      }}
-                      style={selectStyle}
-                    >
-                      {ALL_SURAHS.map((s) => (
-                        <option key={s.number} value={s.number}>
-                          {s.number}. سورة {s.nameArabic} ({s.ayahCount} آية)
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 5 }}>
-                      من الآية:
-                    </label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={currentSurahMeta.ayahCount}
-                      value={editFromAyah}
-                      onChange={(e) => {
-                        const v = Math.max(1, Math.min(currentSurahMeta.ayahCount, Number(e.target.value)));
-                        setEditFromAyah(v);
-                        if (editToAyah < v) setEditToAyah(v);
-                      }}
-                      style={inputStyle}
-                    />
-                  </div>
-
-                  <div>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 5 }}>
-                      إلى الآية:
-                    </label>
-                    <input
-                      type="number"
-                      min={editFromAyah}
-                      max={currentSurahMeta.ayahCount}
-                      value={editToAyah}
-                      onChange={(e) => {
-                        const v = Math.max(editFromAyah, Math.min(currentSurahMeta.ayahCount, Number(e.target.value)));
-                        setEditToAyah(v);
-                      }}
-                      style={inputStyle}
-                    />
-                  </div>
-                </div>
-
-                {/* Live Uthmani Verses Preview Card */}
-                <div
+              {/* Top Segmented Mode Selector */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 8,
+                  background: "#F1F5F9",
+                  padding: 5,
+                  borderRadius: 14,
+                  marginBottom: 24,
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setEntryMode("upload")}
                   style={{
-                    background: "linear-gradient(135deg, #FEFDF9 0%, #FAF6ED 100%)",
-                    border: "1.5px solid #EAD8B1",
-                    borderRadius: 16,
-                    padding: "18px 20px",
-                    boxShadow: "inset 0 1px 3px rgba(0,0,0,0.02)",
+                    padding: "12px 14px",
+                    borderRadius: 10,
+                    border: "none",
+                    cursor: "pointer",
+                    fontWeight: 800,
+                    fontSize: 14,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    background: entryMode === "upload" ? "#FFFFFF" : "transparent",
+                    color: entryMode === "upload" ? "#854D0E" : "#64748B",
+                    boxShadow: entryMode === "upload" ? "0 2px 8px rgba(0,0,0,0.06)" : "none",
+                    transition: "all 0.15s ease",
                   }}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "#854D0E" }}>
-                      معاينة الرسم العثماني الشريف ({customization.riwayah === "warsh" ? "رواية ورش" : "رواية حفص"}):
-                    </span>
-                    <span style={{ fontSize: 11, color: "#94A3B8" }}>
-                      سورة {currentSurahMeta.nameArabic} · الآيات {editFromAyah} إلى {editToAyah}
-                    </span>
-                  </div>
+                  <IconUpload size={16} />
+                  <span>رفع مقطع صوت أو فيديو خاص</span>
+                </button>
 
-                  <div
-                    style={{
-                      fontFamily: "'Amiri', serif",
-                      fontSize: "clamp(18px, 2.5vw, 24px)",
-                      lineHeight: 2.2,
-                      textAlign: "center",
-                      color: "#1E293B",
-                      direction: "rtl",
-                      minHeight: 50,
-                    }}
-                  >
-                    {isLoadingPreview ? (
-                      <span style={{ fontSize: 14, color: "#94A3B8" }}>جاري تحميل الرسم العثماني...</span>
-                    ) : onboardingVerses.length > 0 ? (
-                      onboardingVerses.map((v) => (
-                        <span key={v.ayah} style={{ margin: "0 4px" }}>
-                          {v.uthmani}
-                          <span
+                <button
+                  type="button"
+                  onClick={() => setEntryMode("preselected")}
+                  style={{
+                    padding: "12px 14px",
+                    borderRadius: 10,
+                    border: "none",
+                    cursor: "pointer",
+                    fontWeight: 800,
+                    fontSize: 14,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    background: entryMode === "preselected" ? "#FFFFFF" : "transparent",
+                    color: entryMode === "preselected" ? "#854D0E" : "#64748B",
+                    boxShadow: entryMode === "preselected" ? "0 2px 8px rgba(0,0,0,0.06)" : "none",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  <IconBook size={16} />
+                  <span>إنشاء فوري بآيات وقارئ مدمج</span>
+                </button>
+              </div>
+
+              {/* ------------------------------------------------ MODE 1: UPLOAD CUSTOM MEDIA */}
+              {entryMode === "upload" && (
+                <div>
+                  {/* Step A: Riwayah selection */}
+                  <div style={{ marginBottom: 22, borderBottom: "1px solid #F1F5F9", paddingBottom: 20 }}>
+                    <label style={{ display: "block", fontSize: 13, fontWeight: 800, color: "#854D0E", marginBottom: 10 }}>
+                      ١. الرواية الشريفة المعتمدة للمقطع:
+                    </label>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                      {[
+                        {
+                          id: "warsh" as Riwayah,
+                          title: "رواية ورش عن نافع",
+                          desc: "مصحف ورش برسمه العثماني الأصيل (بدون همزات على يُومِنُونَ، ونقل الهمز ومَلِكِ يَوْمِ الدِّينِ)",
+                          badge: "قراءة أهل الجزائر والمغرب",
+                        },
+                        {
+                          id: "hafs" as Riwayah,
+                          title: "رواية حفص عن عاصم",
+                          desc: "مصحف مجمع الملك فهد بالمدينة المنورة (مَـٰلِكِ يَوْمِ الدِّينِ، ويُؤْمِنُونَ)",
+                          badge: "الرسم الأكثر انتشاراً",
+                        },
+                      ].map((r) => {
+                        const isSelected = customization.riwayah === r.id;
+                        return (
+                          <button
+                            key={r.id}
+                            type="button"
+                            onClick={() => handleRiwayahChange(r.id)}
                             style={{
-                              display: "inline-block",
-                              margin: "0 6px",
-                              color: "#D4AF37",
-                              fontSize: "0.85em",
+                              padding: "14px 16px",
+                              borderRadius: 12,
+                              border: isSelected ? "2px solid #D4AF37" : "1px solid #E2E8F0",
+                              background: isSelected ? "linear-gradient(135deg, #FEFDF9 0%, #FFF9EB 100%)" : "#FFFFFF",
+                              boxShadow: isSelected ? "0 6px 20px -4px rgba(212, 175, 55, 0.2)" : "0 1px 3px rgba(0,0,0,0.02)",
+                              textAlign: "right",
+                              cursor: "pointer",
+                              transition: "all 0.15s ease",
                             }}
                           >
-                            ۝{v.ayah}
-                          </span>
-                        </span>
-                      ))
-                    ) : (
-                      <span>بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* STEP 3: AUDIO & VIDEO SOURCE */}
-              <div style={{ marginBottom: 24 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#FEF9C3", color: "#854D0E", fontWeight: 800, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    3
-                  </div>
-                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#0F172A" }}>
-                    مصدر التلاوة الصوتية والمشهد
-                  </h3>
-                </div>
-
-                {/* 3 Source Options Toggle */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 16 }}>
-                  {[
-                    { id: "instant" as const, title: "تلاوة جاهزة فورية", sub: "الشيخ مشاري راشد" },
-                    { id: "upload" as const, title: "رفع تلاوة / فيديو", sub: "MP3, WAV, MP4" },
-                    { id: "record" as const, title: "تسجيل بالمايكروفون", sub: "تلاوتك بصوتك" },
-                  ].map((opt) => {
-                    const active = onboardingAudioSource === opt.id;
-                    return (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => setOnboardingAudioSource(opt.id)}
-                        style={{
-                          padding: "12px 10px",
-                          borderRadius: 12,
-                          border: active ? "2px solid #D4AF37" : "1px solid #E2E8F0",
-                          background: active ? "#FEFDF7" : "#FFFFFF",
-                          textAlign: "center",
-                          cursor: "pointer",
-                        }}
-                      >
-                        <div style={{ fontSize: 13, fontWeight: 800, color: active ? "#854D0E" : "#1E293B" }}>
-                          {opt.title}
-                        </div>
-                        <div style={{ fontSize: 11, color: "#64748B", marginTop: 2 }}>
-                          {opt.sub}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Option A: Instant reciter info */}
-                {onboardingAudioSource === "instant" && (
-                  <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 14, padding: "14px 18px", textAlign: "center" }}>
-                    <p style={{ margin: 0, fontSize: 13, color: "#334155", fontWeight: 600 }}>
-                      سيتم استخدام تلاوة معتمدة عالية الجودة بصوت الشيخ مشاري راشد العفاسي محاكة ومطابقة لمقطع الآيات المحدد ({currentSurahMeta.nameArabic}: {editFromAyah}-{editToAyah}).
-                    </p>
-                  </div>
-                )}
-
-                {/* Option B: Upload File */}
-                {onboardingAudioSource === "upload" && (
-                  <div
-                    onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-                    onDragLeave={() => setIsDragging(false)}
-                    onDrop={handleDrop}
-                    onClick={() => document.getElementById("onboardingFileInput")?.click()}
-                    style={{
-                      border: isDragging ? "2px dashed #D4AF37" : "2px dashed #CBD5E1",
-                      borderRadius: 14,
-                      padding: "28px 16px",
-                      background: isDragging ? "#FEFDF7" : "#F8FAFC",
-                      textAlign: "center",
-                      cursor: "pointer",
-                      transition: "all 0.15s ease",
-                    }}
-                  >
-                    <div style={{ fontSize: 15, fontWeight: 700, color: "#0F172A", marginBottom: 4 }}>
-                      انقر لاختيار ملف الصوت أو الفيديو، أو اسحبه وأفلته هنا
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                              <span style={{ fontSize: 14, fontWeight: 800, color: isSelected ? "#854D0E" : "#0F172A" }}>
+                                {r.title}
+                              </span>
+                              <span
+                                style={{
+                                  fontSize: 10,
+                                  fontWeight: 700,
+                                  padding: "2px 7px",
+                                  borderRadius: 999,
+                                  background: isSelected ? "#D4AF37" : "#F1F5F9",
+                                  color: isSelected ? "#1A1300" : "#64748B",
+                                }}
+                              >
+                                {r.badge}
+                              </span>
+                            </div>
+                            <p style={{ fontSize: 11, color: "#64748B", margin: 0, lineHeight: 1.45 }}>
+                              {r.desc}
+                            </p>
+                          </button>
+                        );
+                      })}
                     </div>
-                    <div style={{ fontSize: 12, color: "#64748B" }}>
-                      صيغ مدعومة: MP3, WAV, M4A, MP4, WEBM (يدعم حتى 5 دقائق مع التزامن التجويدي)
-                    </div>
-                    <input
-                      id="onboardingFileInput"
-                      type="file"
-                      accept="audio/*,video/*"
-                      style={{ display: "none" }}
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleFileUpload(file);
+                  </div>
+
+                  {/* Step B: Primary Upload Dropzone */}
+                  <div style={{ marginBottom: 18 }}>
+                    <label style={{ display: "block", fontSize: 13, fontWeight: 800, color: "#854D0E", marginBottom: 10 }}>
+                      ٢. رفع ملف الصوت أو الفيديو:
+                    </label>
+
+                    <div
+                      onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                      onDragLeave={() => setIsDragging(false)}
+                      onDrop={handleDrop}
+                      onClick={() => document.getElementById("onboardingFileInput")?.click()}
+                      style={{
+                        border: isDragging ? "2px dashed #D4AF37" : "2px dashed #CBD5E1",
+                        borderRadius: 16,
+                        padding: "36px 20px",
+                        background: isDragging ? "#FEFDF7" : "#F8FAFC",
+                        textAlign: "center",
+                        cursor: "pointer",
+                        transition: "all 0.15s ease",
                       }}
-                    />
-                  </div>
-                )}
-
-                {/* Option C: Direct Microphone */}
-                {onboardingAudioSource === "record" && (
-                  <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 14, padding: "20px 18px", textAlign: "center" }}>
-                    {stage === "recording" ? (
-                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ width: 12, height: 12, borderRadius: "50%", background: "#DC2626", animation: "pulse 1.2s infinite" }} />
-                          <span style={{ fontSize: 17, fontWeight: 700, color: "#DC2626" }}>
-                            جاري تسجيل تلاوتك: {formatTime(recordingSec)}
-                          </span>
-                        </div>
-                        <button onClick={stopRecording} style={{ ...dangerBtn, maxWidth: 220 }}>
-                          إيقاف التسجيل والدخول
-                        </button>
+                    >
+                      <div style={{ width: 54, height: 54, borderRadius: "50%", background: "#FEF9C3", color: "#854D0E", margin: "0 auto 12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <IconUpload size={24} color="#854D0E" />
                       </div>
-                    ) : (
-                      <button onClick={startRecording} style={{ ...primaryBtn, maxWidth: 240, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                        <span>بدء التسجيل بالمايكروفون</span>
-                      </button>
+                      <div style={{ fontSize: 16, fontWeight: 800, color: "#0F172A", marginBottom: 6 }}>
+                        انقر لاختيار مقطع صوتي أو فيديو، أو اسحبه وأفلته هنا
+                      </div>
+                      <div style={{ fontSize: 12, color: "#64748B", maxWidth: 460, margin: "0 auto" }}>
+                        صيغ مدعومة: MP3, WAV, M4A, MP4, WEBM (يدعم حتى 5 دقائق مع التزامن التلقائي والتعرف الصوتي الذكي)
+                      </div>
+                      <input
+                        id="onboardingFileInput"
+                        type="file"
+                        accept="audio/*,video/*"
+                        style={{ display: "none" }}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleFileUpload(file);
+                        }}
+                      />
+                    </div>
+
+                    {/* Microphone direct recording option */}
+                    <div style={{ marginTop: 12, textAlign: "center" }}>
+                      {stage === "recording" ? (
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, background: "#FEF2F2", border: "1px solid #FCA5A5", borderRadius: 12, padding: "14px 16px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#DC2626", animation: "pulse 1.2s infinite" }} />
+                            <span style={{ fontSize: 15, fontWeight: 700, color: "#DC2626" }}>
+                              جاري تسجيل التلاوة: {formatTime(recordingSec)}
+                            </span>
+                          </div>
+                          <button onClick={stopRecording} style={{ ...dangerBtn, maxWidth: 200, padding: "8px 16px", fontSize: 13 }}>
+                            إيقاف التسجيل والبدء
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={startRecording}
+                          style={{
+                            background: "transparent",
+                            border: "1px solid #CBD5E1",
+                            borderRadius: 10,
+                            padding: "8px 16px",
+                            cursor: "pointer",
+                            fontSize: 12,
+                            fontWeight: 700,
+                            color: "#475569",
+                          }}
+                        >
+                          🎙 أو سجّل تلاوتك مباشرة عبر المايكروفون
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Step C: Optional manual Ayah selector (Collapsible - Not mandatory!) */}
+                  <div style={{ marginTop: 20, border: "1px solid #E2E8F0", borderRadius: 12, overflow: "hidden", background: "#F8FAFC" }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowManualAyahOption(!showManualAyahOption)}
+                      style={{
+                        width: "100%",
+                        padding: "12px 16px",
+                        background: "transparent",
+                        border: "none",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        fontSize: 13,
+                        fontWeight: 700,
+                        color: "#475569",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ color: "#854D0E" }}>⚙</span>
+                        <span>تحديد السورة والآيات يدويًا (اختياري - لمطابقة مسبقة دقيقة)</span>
+                      </div>
+                      <span style={{ fontSize: 12, transform: showManualAyahOption ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>
+                        ▼
+                      </span>
+                    </button>
+
+                    {showManualAyahOption && (
+                      <div style={{ padding: "16px 18px", background: "#FFFFFF", borderTop: "1px solid #E2E8F0" }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr", gap: 10, marginBottom: 14 }}>
+                          <div>
+                            <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 5 }}>
+                              السورة الكريمة:
+                            </label>
+                            <select
+                              value={editSurah}
+                              onChange={(e) => {
+                                const sNum = Number(e.target.value);
+                                setEditSurah(sNum);
+                                setEditFromAyah(1);
+                                setEditToAyah(Math.min(7, ALL_SURAHS.find((s) => s.number === sNum)?.ayahCount || 1));
+                              }}
+                              style={selectStyle}
+                            >
+                              {ALL_SURAHS.map((s) => (
+                                <option key={s.number} value={s.number}>
+                                  {s.number}. سورة {s.nameArabic} ({s.ayahCount} آية)
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 5 }}>
+                              من الآية:
+                            </label>
+                            <input
+                              type="number"
+                              min={1}
+                              max={currentSurahMeta.ayahCount}
+                              value={editFromAyah}
+                              onChange={(e) => {
+                                const v = Math.max(1, Math.min(currentSurahMeta.ayahCount, Number(e.target.value)));
+                                setEditFromAyah(v);
+                                if (editToAyah < v) setEditToAyah(v);
+                              }}
+                              style={inputStyle}
+                            />
+                          </div>
+
+                          <div>
+                            <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 5 }}>
+                              إلى الآية:
+                            </label>
+                            <input
+                              type="number"
+                              min={editFromAyah}
+                              max={currentSurahMeta.ayahCount}
+                              value={editToAyah}
+                              onChange={(e) => {
+                                const v = Math.max(editFromAyah, Math.min(currentSurahMeta.ayahCount, Number(e.target.value)));
+                                setEditToAyah(v);
+                              }}
+                              style={inputStyle}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Live Uthmani Verses Preview for selected Riwayah */}
+                        <div
+                          style={{
+                            background: "linear-gradient(135deg, #FEFDF9 0%, #FAF6ED 100%)",
+                            border: "1.5px solid #EAD8B1",
+                            borderRadius: 14,
+                            padding: "14px 16px",
+                          }}
+                        >
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: "#854D0E" }}>
+                              معاينة الرسم العثماني ({customization.riwayah === "warsh" ? "مصحف ورش الأصيل" : "مصحف حفص"}):
+                            </span>
+                            <span style={{ fontSize: 11, color: "#94A3B8" }}>
+                              سورة {currentSurahMeta.nameArabic} ({editFromAyah} - {editToAyah})
+                            </span>
+                          </div>
+                          <div
+                            style={{
+                              fontFamily: "'Amiri', serif",
+                              fontSize: "clamp(16px, 2vw, 20px)",
+                              lineHeight: 2,
+                              textAlign: "center",
+                              color: "#1E293B",
+                              direction: "rtl",
+                            }}
+                          >
+                            {isLoadingPreview ? (
+                              <span style={{ fontSize: 13, color: "#94A3B8" }}>جاري تحميل الرسم العثماني...</span>
+                            ) : onboardingVerses.length > 0 ? (
+                              onboardingVerses.map((v) => (
+                                <span key={v.ayah} style={{ margin: "0 4px" }}>
+                                  {v.uthmani}
+                                  <span style={{ display: "inline-block", margin: "0 5px", color: "#D4AF37", fontSize: "0.85em" }}>
+                                    ۝{v.ayah}
+                                  </span>
+                                </span>
+                              ))
+                            ) : (
+                              <span>بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
                     )}
                   </div>
-                )}
-              </div>
-
-              {/* BIG CALL TO ACTION: ENTER DESIGNER */}
-              {stage === "idle" && (
-                <div>
-                  <button
-                    onClick={() => {
-                      loadCorrectedAyah(editSurah, editFromAyah, editToAyah, customization.riwayah);
-                    }}
-                    style={{
-                      ...primaryBtn,
-                      padding: "16px 24px",
-                      fontSize: 16,
-                      fontWeight: 800,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 10,
-                    }}
-                  >
-                    <span>بدء تصميم المقطع القرآني</span>
-                    <IconChevronRight size={18} />
-                  </button>
                 </div>
               )}
 
-              {/* Processing progress if stage === processing */}
+              {/* ------------------------------------------------ MODE 2: PRESELECTED AYAH & RECITER */}
+              {entryMode === "preselected" && (
+                <div>
+                  {/* Step A: Riwayah selection */}
+                  <div style={{ marginBottom: 22, borderBottom: "1px solid #F1F5F9", paddingBottom: 20 }}>
+                    <label style={{ display: "block", fontSize: 13, fontWeight: 800, color: "#854D0E", marginBottom: 10 }}>
+                      ١. الرواية الشريفة المعتمدة:
+                    </label>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                      {[
+                        {
+                          id: "warsh" as Riwayah,
+                          title: "رواية ورش عن نافع",
+                          desc: "مصحف ورش برسمه العثماني الأصيل (بدون همزات على يُومِنُونَ، ونقل الهمز ومَلِكِ يَوْمِ الدِّينِ)",
+                          badge: "قراءة أهل الجزائر والمغرب",
+                        },
+                        {
+                          id: "hafs" as Riwayah,
+                          title: "رواية حفص عن عاصم",
+                          desc: "مصحف مجمع الملك فهد بالمدينة المنورة (مَـٰلِكِ يَوْمِ الدِّينِ، ويُؤْمِنُونَ)",
+                          badge: "الرسم الأكثر انتشاراً",
+                        },
+                      ].map((r) => {
+                        const isSelected = customization.riwayah === r.id;
+                        return (
+                          <button
+                            key={r.id}
+                            type="button"
+                            onClick={() => handleRiwayahChange(r.id)}
+                            style={{
+                              padding: "14px 16px",
+                              borderRadius: 12,
+                              border: isSelected ? "2px solid #D4AF37" : "1px solid #E2E8F0",
+                              background: isSelected ? "linear-gradient(135deg, #FEFDF9 0%, #FFF9EB 100%)" : "#FFFFFF",
+                              boxShadow: isSelected ? "0 6px 20px -4px rgba(212, 175, 55, 0.2)" : "0 1px 3px rgba(0,0,0,0.02)",
+                              textAlign: "right",
+                              cursor: "pointer",
+                              transition: "all 0.15s ease",
+                            }}
+                          >
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                              <span style={{ fontSize: 14, fontWeight: 800, color: isSelected ? "#854D0E" : "#0F172A" }}>
+                                {r.title}
+                              </span>
+                              <span
+                                style={{
+                                  fontSize: 10,
+                                  fontWeight: 700,
+                                  padding: "2px 7px",
+                                  borderRadius: 999,
+                                  background: isSelected ? "#D4AF37" : "#F1F5F9",
+                                  color: isSelected ? "#1A1300" : "#64748B",
+                                }}
+                              >
+                                {r.badge}
+                              </span>
+                            </div>
+                            <p style={{ fontSize: 11, color: "#64748B", margin: 0, lineHeight: 1.45 }}>
+                              {r.desc}
+                            </p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Step B: Ayah selection */}
+                  <div style={{ marginBottom: 22, borderBottom: "1px solid #F1F5F9", paddingBottom: 20 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                      <label style={{ fontSize: 13, fontWeight: 800, color: "#854D0E" }}>
+                        ٢. تحديد السورة والآيات الكريمة:
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setShowEditAyahModal(true)}
+                        style={{
+                          ...ghostBtn,
+                          padding: "5px 12px",
+                          fontSize: 11,
+                          border: "1px solid #D4AF37",
+                          color: "#854D0E",
+                          background: "#FEFDF7",
+                        }}
+                      >
+                        بحث بالكلمات في المصحف
+                      </button>
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr", gap: 10, marginBottom: 14 }}>
+                      <div>
+                        <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 5 }}>
+                          السورة الكريمة:
+                        </label>
+                        <select
+                          value={editSurah}
+                          onChange={(e) => {
+                            const sNum = Number(e.target.value);
+                            setEditSurah(sNum);
+                            setEditFromAyah(1);
+                            setEditToAyah(Math.min(7, ALL_SURAHS.find((s) => s.number === sNum)?.ayahCount || 1));
+                          }}
+                          style={selectStyle}
+                        >
+                          {ALL_SURAHS.map((s) => (
+                            <option key={s.number} value={s.number}>
+                              {s.number}. سورة {s.nameArabic} ({s.ayahCount} آية)
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 5 }}>
+                          من الآية:
+                        </label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={currentSurahMeta.ayahCount}
+                          value={editFromAyah}
+                          onChange={(e) => {
+                            const v = Math.max(1, Math.min(currentSurahMeta.ayahCount, Number(e.target.value)));
+                            setEditFromAyah(v);
+                            if (editToAyah < v) setEditToAyah(v);
+                          }}
+                          style={inputStyle}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 5 }}>
+                          إلى الآية:
+                        </label>
+                        <input
+                          type="number"
+                          min={editFromAyah}
+                          max={currentSurahMeta.ayahCount}
+                          value={editToAyah}
+                          onChange={(e) => {
+                            const v = Math.max(editFromAyah, Math.min(currentSurahMeta.ayahCount, Number(e.target.value)));
+                            setEditToAyah(v);
+                          }}
+                          style={inputStyle}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Live Uthmani Verses Preview */}
+                    <div
+                      style={{
+                        background: "linear-gradient(135deg, #FEFDF9 0%, #FAF6ED 100%)",
+                        border: "1.5px solid #EAD8B1",
+                        borderRadius: 14,
+                        padding: "16px 18px",
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: "#854D0E" }}>
+                          معاينة الرسم العثماني الشريف ({customization.riwayah === "warsh" ? "مصحف ورش الأصيل" : "مصحف حفص"}):
+                        </span>
+                        <span style={{ fontSize: 11, color: "#94A3B8" }}>
+                          سورة {currentSurahMeta.nameArabic} · الآيات {editFromAyah} إلى {editToAyah}
+                        </span>
+                      </div>
+
+                      <div
+                        style={{
+                          fontFamily: "'Amiri', serif",
+                          fontSize: "clamp(18px, 2.5vw, 22px)",
+                          lineHeight: 2.2,
+                          textAlign: "center",
+                          color: "#1E293B",
+                          direction: "rtl",
+                          minHeight: 46,
+                        }}
+                      >
+                        {isLoadingPreview ? (
+                          <span style={{ fontSize: 14, color: "#94A3B8" }}>جاري تحميل الرسم العثماني...</span>
+                        ) : onboardingVerses.length > 0 ? (
+                          onboardingVerses.map((v) => (
+                            <span key={v.ayah} style={{ margin: "0 4px" }}>
+                              {v.uthmani}
+                              <span style={{ display: "inline-block", margin: "0 6px", color: "#D4AF37", fontSize: "0.85em" }}>
+                                ۝{v.ayah}
+                              </span>
+                            </span>
+                          ))
+                        ) : (
+                          <span>بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Step C: Reciter selection */}
+                  <div style={{ marginBottom: 24 }}>
+                    <label style={{ display: "block", fontSize: 13, fontWeight: 800, color: "#854D0E", marginBottom: 10 }}>
+                      ٣. اختيار القارئ المعتمد:
+                    </label>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+                      {RECITERS.slice(0, 4).map((rec) => {
+                        const active = selectedReciterId === rec.id;
+                        return (
+                          <button
+                            key={rec.id}
+                            type="button"
+                            onClick={() => setSelectedReciterId(rec.id)}
+                            style={{
+                              padding: "10px 8px",
+                              borderRadius: 10,
+                              border: active ? "2px solid #D4AF37" : "1px solid #E2E8F0",
+                              background: active ? "#FEFDF7" : "#FFFFFF",
+                              textAlign: "center",
+                              cursor: "pointer",
+                            }}
+                          >
+                            <div style={{ fontSize: 12, fontWeight: 800, color: active ? "#854D0E" : "#1E293B" }}>
+                              {rec.name.split(" ")[0]} {rec.name.split(" ")[1] || ""}
+                            </div>
+                            <div style={{ fontSize: 10, color: "#64748B", marginTop: 2 }}>
+                              {rec.en.split(" ")[0]}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Preselected CTA Button */}
+                  {stage === "idle" && (
+                    <button
+                      onClick={() => {
+                        setCustomization((c) => ({ ...c, selectedAudioSource: selectedReciterId }));
+                        loadCorrectedAyah(editSurah, editFromAyah, editToAyah, customization.riwayah);
+                      }}
+                      style={{
+                        ...primaryBtn,
+                        padding: "16px 24px",
+                        fontSize: 16,
+                        fontWeight: 800,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 10,
+                      }}
+                    >
+                      <span>إنشاء وتصميم المقطع القرآني</span>
+                      <IconChevronRight size={18} />
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Processing Progress Indicator */}
               {stage === "processing" && (
-                <div style={{ marginTop: 16, textAlign: "center" }}>
+                <div style={{ marginTop: 20, textAlign: "center" }}>
                   <ProgressBar value={progress} />
                   <div style={{ fontSize: 13, color: "#854D0E", marginTop: 8, fontWeight: 700 }}>
                     {statusMessage || "جاري إعداد الآيات والتزامن..."} ({progress}%)

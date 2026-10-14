@@ -168,76 +168,121 @@ export async function GET(request: Request) {
       });
     }
 
-    // Try fetching whole chapter from Quran.com Content API v4
+    // Authentic Warsh edition (King Fahd Complex verified orthography with no hamzahs on youminoon)
     let chapterVerses: { ayah: number; uthmani: string; translation: string }[] = [];
-    try {
-      const textEndpoint = riwayah === "warsh"
-        ? `https://api.quran.com/api/v4/quran/verses/warsh?chapter_number=${surah}`
-        : `https://api.quran.com/api/v4/quran/verses/uthmani?chapter_number=${surah}`;
+    if (riwayah === "warsh") {
+      try {
+        const [warshRes, transRes] = await Promise.all([
+          fetch(
+            `https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions/ara-quranwarsh/${surah}.json`,
+            { headers: { accept: "application/json" }, signal: AbortSignal.timeout(8000) }
+          ).catch(() =>
+            fetch(
+              `https://raw.githubusercontent.com/fawazahmed0/quran-api/1/editions/ara-quranwarsh/${surah}.json`,
+              { headers: { accept: "application/json" }, signal: AbortSignal.timeout(8000) }
+            )
+          ),
+          fetch(
+            `https://api.quran.com/api/v4/verses/by_chapter/${surah}?words=false&translations=${translationId}&per_page=300`,
+            { headers: { accept: "application/json" }, signal: AbortSignal.timeout(8000) }
+          ).catch(() => null),
+        ]);
 
-      const [textRes, transRes] = await Promise.all([
-        fetch(textEndpoint, {
-          headers: { accept: "application/json" },
-          signal: AbortSignal.timeout(8000),
-        }),
-        fetch(
-          `https://api.quran.com/api/v4/verses/by_chapter/${surah}?words=false&translations=${translationId}&per_page=300`,
-          {
-            headers: { accept: "application/json" },
-            signal: AbortSignal.timeout(8000),
-          },
-        ),
-      ]);
-
-      if (textRes.ok) {
-        const textJson = (await textRes.json()) as { verses?: { verse_key?: string; text_uthmani?: string }[] };
-        const transJson = transRes.ok
-          ? ((await transRes.json()) as {
+        if (warshRes && warshRes.ok) {
+          const warshJson = (await warshRes.json()) as { chapter?: { verse: number; text: string }[] };
+          const transMap = new Map<number, string>();
+          if (transRes && transRes.ok) {
+            const transJson = (await transRes.json()) as {
               verses?: { verse_key?: string; translations?: { text?: string }[] }[];
-            })
-          : undefined;
-
-        const transMap = new Map<string, string>();
-        for (const v of transJson?.verses || []) {
-          if (v.verse_key && v.translations?.[0]?.text) {
-            transMap.set(v.verse_key, cleanTranslation(v.translations[0].text));
+            };
+            for (const v of transJson?.verses || []) {
+              const a = Number(v.verse_key?.split(":")[1]);
+              if (a && v.translations?.[0]?.text) {
+                transMap.set(a, cleanTranslation(v.translations[0].text));
+              }
+            }
           }
-        }
 
-        for (const v of textJson.verses || []) {
-          const key = v.verse_key || "";
-          const [s, a] = key.split(":").map(Number);
-          if (s === surah && a) {
+          for (const item of warshJson.chapter || []) {
             chapterVerses.push({
-              ayah: a,
-              uthmani: v.text_uthmani?.trim() || "",
-              translation: transMap.get(key) || "",
+              ayah: item.verse,
+              uthmani: item.text.trim(),
+              translation: transMap.get(item.verse) || "",
             });
           }
         }
+      } catch (err) {
+        console.warn("[api/quran] Warsh authentic fetch error:", err);
       }
-    } catch {
-      // Fallback to AlQuran Cloud API for whole surah (Hafs or Warsh)
+    }
+
+    // Try fetching whole chapter from Quran.com Content API v4 if not already loaded
+    if (chapterVerses.length === 0) {
       try {
-        const edition = riwayah === "warsh" ? "ar.warsh,fr.montada" : "quran-uthmani,fr.montada";
-        const fallbackRes = await fetch(
-          `https://api.alquran.cloud/v1/surah/${surah}/editions/${edition}`,
-          { headers: { accept: "application/json" }, signal: AbortSignal.timeout(8000) },
-        );
-        if (fallbackRes.ok) {
-          const fbJson = (await fallbackRes.json()) as {
-            data?: [{ ayahs?: { numberInSurah: number; text: string }[] }, { ayahs?: { numberInSurah: number; text: string }[] }];
-          };
-          const arabicAyahs = fbJson.data?.[0]?.ayahs || [];
-          const frenchAyahs = fbJson.data?.[1]?.ayahs || [];
-          chapterVerses = arabicAyahs.map((ar, i) => ({
-            ayah: ar.numberInSurah,
-            uthmani: ar.text,
-            translation: frenchAyahs[i]?.text || "",
-          }));
+        const [textRes, transRes] = await Promise.all([
+          fetch(`https://api.quran.com/api/v4/quran/verses/uthmani?chapter_number=${surah}`, {
+            headers: { accept: "application/json" },
+            signal: AbortSignal.timeout(8000),
+          }),
+          fetch(
+            `https://api.quran.com/api/v4/verses/by_chapter/${surah}?words=false&translations=${translationId}&per_page=300`,
+            {
+              headers: { accept: "application/json" },
+              signal: AbortSignal.timeout(8000),
+            },
+          ),
+        ]);
+
+        if (textRes.ok) {
+          const textJson = (await textRes.json()) as { verses?: { verse_key?: string; text_uthmani?: string }[] };
+          const transJson = transRes.ok
+            ? ((await transRes.json()) as {
+                verses?: { verse_key?: string; translations?: { text?: string }[] }[];
+              })
+            : undefined;
+
+          const transMap = new Map<string, string>();
+          for (const v of transJson?.verses || []) {
+            if (v.verse_key && v.translations?.[0]?.text) {
+              transMap.set(v.verse_key, cleanTranslation(v.translations[0].text));
+            }
+          }
+
+          for (const v of textJson.verses || []) {
+            const key = v.verse_key || "";
+            const [s, a] = key.split(":").map(Number);
+            if (s === surah && a) {
+              chapterVerses.push({
+                ayah: a,
+                uthmani: v.text_uthmani?.trim() || "",
+                translation: transMap.get(key) || "",
+              });
+            }
+          }
         }
       } catch {
-        /* fallback failed */
+        // Fallback to AlQuran Cloud API for whole surah (Hafs or Warsh)
+        try {
+          const edition = riwayah === "warsh" ? "ar.warsh,fr.montada" : "quran-uthmani,fr.montada";
+          const fallbackRes = await fetch(
+            `https://api.alquran.cloud/v1/surah/${surah}/editions/${edition}`,
+            { headers: { accept: "application/json" }, signal: AbortSignal.timeout(8000) },
+          );
+          if (fallbackRes.ok) {
+            const fbJson = (await fallbackRes.json()) as {
+              data?: [{ ayahs?: { numberInSurah: number; text: string }[] }, { ayahs?: { numberInSurah: number; text: string }[] }];
+            };
+            const arabicAyahs = fbJson.data?.[0]?.ayahs || [];
+            const frenchAyahs = fbJson.data?.[1]?.ayahs || [];
+            chapterVerses = arabicAyahs.map((ar, i) => ({
+              ayah: ar.numberInSurah,
+              uthmani: ar.text,
+              translation: frenchAyahs[i]?.text || "",
+            }));
+          }
+        } catch {
+          /* fallback failed */
+        }
       }
     }
 

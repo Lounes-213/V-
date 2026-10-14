@@ -406,16 +406,48 @@ Return ONLY a valid JSON array:
 
 // In-memory cache for surah verse maps
 const surahVerseCache = new Map<
-  number,
+  string,
   Map<number, { uthmani: string; translation: string }>
 >();
 
-async function getSurahVerses(surahNum: number): Promise<Map<number, { uthmani: string; translation: string }>> {
-  if (surahVerseCache.has(surahNum)) {
-    return surahVerseCache.get(surahNum)!;
+async function getSurahVerses(
+  surahNum: number,
+  riwayah: "hafs" | "warsh" = "hafs",
+): Promise<Map<number, { uthmani: string; translation: string }>> {
+  const cacheKey = `${surahNum}:${riwayah}`;
+  if (surahVerseCache.has(cacheKey)) {
+    return surahVerseCache.get(cacheKey)!;
   }
 
   const map = new Map<number, { uthmani: string; translation: string }>();
+
+  // Authentic Warsh edition from King Fahd Complex dataset
+  if (riwayah === "warsh") {
+    try {
+      const res = await fetch(
+        `https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions/ara-quranwarsh/${surahNum}.json`,
+        { headers: { accept: "application/json" }, signal: AbortSignal.timeout(7000) },
+      ).catch(() =>
+        fetch(
+          `https://raw.githubusercontent.com/fawazahmed0/quran-api/1/editions/ara-quranwarsh/${surahNum}.json`,
+          { headers: { accept: "application/json" }, signal: AbortSignal.timeout(7000) },
+        ),
+      );
+      if (res && res.ok) {
+        const json = (await res.json()) as { chapter?: { verse: number; text: string }[] };
+        for (const item of json.chapter || []) {
+          map.set(item.verse, { uthmani: item.text.trim(), translation: "" });
+        }
+      }
+    } catch (e) {
+      console.warn(`[getSurahVerses] Warsh fetch warning for Surah ${surahNum}:`, e);
+    }
+  }
+
+  if (map.size > 0) {
+    surahVerseCache.set(cacheKey, map);
+    return map;
+  }
 
   try {
     const [textRes, transRes] = await Promise.all([
@@ -501,7 +533,7 @@ async function getSurahVerses(surahNum: number): Promise<Map<number, { uthmani: 
   }
 
   if (map.size > 0) {
-    surahVerseCache.set(surahNum, map);
+    surahVerseCache.set(cacheKey, map);
   }
   return map;
 }
@@ -831,6 +863,10 @@ export async function POST(request: Request) {
   const b64 = bytes.toString("base64");
   const durationSec = Math.max(1, Number(form.get("durationSec") ?? 0) || 10);
   const clientTranscribedText = String(form.get("transcribedText") ?? "").trim();
+  const clientRiwayah = (String(form.get("riwayah") ?? "").trim() === "warsh" ? "warsh" : "hafs") as "hafs" | "warsh";
+  const surahHint = Number(form.get("surahHint") ?? 0);
+  const fromAyahHint = Number(form.get("fromAyahHint") ?? 0);
+  const toAyahHint = Number(form.get("toAyahHint") ?? 0);
 
   let result: AiDetectionResult | null = null;
   let lastError = "";
@@ -1002,12 +1038,30 @@ Return valid JSON with keys: surah, fromAyah, toAyah, isPartial, confidence, rec
     }
   }
 
+  // Stage 5: Manual Surah & Ayah hint fallback if user provided optional manual selection
+  if (!result && surahHint >= 1 && surahHint <= 114) {
+    const sMeta = ALL_SURAHS.find((s) => s.number === surahHint);
+    const maxA = sMeta?.ayahCount || 286;
+    const fA = Math.max(1, Math.min(maxA, fromAyahHint || 1));
+    const tA = Math.max(fA, Math.min(maxA, toAyahHint || fA));
+    result = {
+      surah: surahHint,
+      fromAyah: fA,
+      toAyah: tA,
+      isPartial: false,
+      confidence: 1.0,
+      recitedText: "",
+      ayahs: [],
+      words: [],
+    };
+  }
+
   if (!result || !result.surah) {
     console.error("[detect-audio] Pipeline found no match. Error:", lastError);
     return NextResponse.json(
       {
         error: "تعذر التعرف التلقائي على الآية الكريمة.",
-        detail: lastError || "Please pick the surah and ayah manually",
+        detail: lastError || "يرجى تحديد السورة والآيات يدوياً أو تجربة تسجيل أوضح.",
         canManualSelect: true,
       },
       { status: 422 },
@@ -1034,8 +1088,8 @@ Return valid JSON with keys: surah, fromAyah, toAyah, isPartial, confidence, rec
   let toAyah = rawTo;
   const isPartial = Boolean(result.isPartial);
 
-  // 1. Fetch official Uthmani text and translations for all ayahs in the passage
-  const verseMap = await getSurahVerses(result.surah);
+  // 1. Fetch official Uthmani text and translations for all ayahs in the passage (Hafs or authentic Warsh)
+  const verseMap = await getSurahVerses(result.surah, clientRiwayah);
   let passageAyahs: {
     ayah: number;
     uthmani: string;
