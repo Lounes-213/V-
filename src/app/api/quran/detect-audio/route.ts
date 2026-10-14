@@ -92,8 +92,8 @@ function normMime(rawType: string): string {
   if (rawType.includes("wav")) return "audio/wav";
   if (rawType.includes("ogg")) return "audio/ogg";
   if (rawType.includes("aac")) return "audio/aac";
-  if (rawType.includes("mp4")) return "audio/mp4";
-  return "audio/wav";
+  if (rawType.includes("mp4") || rawType.includes("m4a")) return "audio/mp4";
+  return "audio/webm";
 }
 
 function normalizeArabic(text: string): string {
@@ -104,6 +104,68 @@ function normalizeArabic(text: string): string {
     .replace(/ة/g, "ه")
     .replace(/[^\u0621-\u064A\s]/g, "")
     .trim();
+}
+
+/**
+ * Resilient JSON parser for Quran AI responses.
+ * Handles clean JSON, markdown-wrapped JSON, and recovers from token-boundary truncations
+ * where the JSON was cut off mid-way through the words array.
+ */
+function safeParseQuranAiJson(rawText: string): AiDetectionResult | null {
+  let text = rawText.trim();
+  if (text.startsWith("```")) {
+    text = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+  }
+
+  // 1. Try standard JSON.parse first
+  try {
+    const parsed = JSON.parse(text) as AiDetectionResult;
+    if (parsed && typeof parsed.surah === "number" && parsed.surah >= 1 && parsed.surah <= 114) {
+      return parsed;
+    }
+  } catch {
+    // Proceed to robust extraction
+  }
+
+  // 2. Resilient recovery for truncated or slightly malformed JSON
+  const surahMatch = text.match(/"surah"\s*:\s*(\d+)/);
+  const fromMatch = text.match(/"fromAyah"\s*:\s*(\d+)/);
+  const toMatch = text.match(/"toAyah"\s*:\s*(\d+)/);
+  const recitedMatch = text.match(/"recitedText"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/);
+
+  if (surahMatch && surahMatch[1]) {
+    const surah = parseInt(surahMatch[1], 10);
+    const fromAyah = fromMatch && fromMatch[1] ? parseInt(fromMatch[1], 10) : 1;
+    const toAyah = toMatch && toMatch[1] ? parseInt(toMatch[1], 10) : fromAyah;
+    const recitedText = recitedMatch && recitedMatch[1] ? recitedMatch[1] : "";
+
+    const words: DetectedWord[] = [];
+    const wordRegex = /\{\s*"word"\s*:\s*"([^"]+)"\s*,\s*"ayah"\s*:\s*(\d+)\s*,\s*"start"\s*:\s*([\d.]+)\s*,\s*"end"\s*:\s*([\d.]+)\s*\}/g;
+    let m: RegExpExecArray | null;
+    while ((m = wordRegex.exec(text)) !== null) {
+      words.push({
+        word: m[1]!,
+        ayah: parseInt(m[2]!, 10),
+        start: parseFloat(m[3]!),
+        end: parseFloat(m[4]!),
+      });
+    }
+
+    console.log(`[detect-audio] Successfully recovered truncated AI JSON: Surah ${surah}, Ayahs ${fromAyah}..${toAyah}, extracted ${words.length} words`);
+
+    return {
+      surah,
+      fromAyah,
+      toAyah,
+      isPartial: false,
+      confidence: 0.95,
+      recitedText,
+      ayahs: [],
+      words,
+    };
+  }
+
+  return null;
 }
 
 /**
@@ -469,6 +531,36 @@ async function tryWhisperTranscription(bytes: Buffer, mimeType: string, _apiKey?
   return "";
 }
 
+async function transcribeAudioWithGemini(bytes: Buffer, mimeType: string, apiKey: string): Promise<string> {
+  try {
+    const b64 = bytes.toString("base64");
+    const prompt = "You are an expert Quran transcriber. Listen to this recitation and output the exact Arabic Quranic words recited. Return ONLY the Arabic words recited, with no explanation or punctuation.";
+    const res = await callGeminiContent(
+      apiKey,
+      [
+        {
+          role: "user",
+          parts: [
+            { inlineData: { mimeType, data: b64 } },
+            { text: prompt },
+          ],
+        },
+      ],
+      { maxOutputTokens: 2048 },
+      30_000,
+    );
+    if (res.ok && res.data) {
+      const text = res.data.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? "").join("").trim() ?? "";
+      if (text.length >= 3) {
+        return text;
+      }
+    }
+  } catch (err) {
+    console.warn("[detect-audio] Gemini audio transcription fallback warning:", (err as Error).message);
+  }
+  return "";
+}
+
 /* ------------------------------------------------------------- Gemini Text Match */
 
 async function identifyPassageFromText(
@@ -667,16 +759,16 @@ Return valid JSON with keys: surah, fromAyah, toAyah, isPartial, confidence, rec
       {
         responseMimeType: "application/json",
         responseSchema: QURAN_DETECT_SCHEMA,
-        maxOutputTokens: 2048,
+        maxOutputTokens: 8192,
       },
-      14_000,
+      35_000,
     );
 
     if (audioRes.ok && audioRes.data) {
       const text = audioRes.data.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? "").join("") ?? "";
       if (text.trim()) {
         try {
-          const parsed = JSON.parse(text) as AiDetectionResult;
+          const parsed = safeParseQuranAiJson(text);
           if (parsed && parsed.surah) {
             // Validate recitedText against canonical Quran index if available
             if (parsed.recitedText && parsed.recitedText.trim().length >= 6) {
@@ -709,7 +801,32 @@ Return valid JSON with keys: surah, fromAyah, toAyah, isPartial, confidence, rec
     }
   }
 
-  // Stage 3: External Whisper STT if Gemini audio couldn't recognize
+  // Stage 2.5: Gemini Audio STT fallback (pure Arabic text) -> Canonical Index Match
+  if (!result) {
+    try {
+      const geminiTranscribed = await transcribeAudioWithGemini(bytes, mimeType, apiKey);
+      if (geminiTranscribed && geminiTranscribed.length >= 3) {
+        console.log(`[detect-audio] Gemini STT recovered text: "${geminiTranscribed.slice(0, 60)}..."`);
+        const passage = await identifyPassageFromText(geminiTranscribed, apiKey);
+        if (passage && passage.surah) {
+          result = {
+            surah: passage.surah,
+            fromAyah: passage.fromAyah,
+            toAyah: passage.toAyah,
+            isPartial: false,
+            confidence: 0.94,
+            recitedText: passage.recitedText,
+            ayahs: passage.ayahs,
+            words: [],
+          };
+        }
+      }
+    } catch (err) {
+      console.warn("[detect-audio] Gemini STT fallback warning:", (err as Error).message);
+    }
+  }
+
+  // Stage 3: External Whisper STT if configured
   if (!result) {
     const whisperText = await tryWhisperTranscription(bytes, mimeType, apiKey);
     if (whisperText && whisperText.length >= 3) {
