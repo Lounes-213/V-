@@ -1,18 +1,18 @@
 {
-  "name": "IVS — Intelligent Video Studio",
-  "short_name": "IVS",
-  "description": "Edit video by editing text. Darja, Arabic and French transcription with Quran Mode, captions and export — all on your device.",
-  "id": "/",
-  "start_url": "/en",
+  "name": "رواية — مصمم مقاطع القرآن الكريم",
+  "short_name": "رواية",
+  "description": "تطبيق احترافي لتصميم ومزامنة مقاطع القرآن الكريم كلمة بكلمة بالرسم العثماني وخلفيات إسلامية ساحرة.",
+  "id": "/quran-video",
+  "start_url": "/ar/quran-video",
   "scope": "/",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone"],
-  "orientation": "any",
-  "background_color": "#0B0F14",
-  "theme_color": "#0B0F14",
-  "lang": "en",
-  "dir": "ltr",
-  "categories": ["video", "productivity", "utilities"],
+  "orientation": "portrait",
+  "background_color": "#F8FAFC",
+  "theme_color": "#D4AF37",
+  "lang": "ar",
+  "dir": "rtl",
+  "categories": ["video", "productivity", "utilities", "lifestyle"],
   "icons": [
     {
       "src": "/icons/icon-192.png",
@@ -35,21 +35,21 @@
   ],
   "shortcuts": [
     {
-      "name": "New project",
-      "short_name": "New",
-      "url": "/en/new",
+      "name": "مصمم مقاطع القرآن",
+      "short_name": "رواية",
+      "url": "/ar/quran-video",
       "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
     },
     {
-      "name": "Project library",
-      "short_name": "Library",
-      "url": "/en/projects",
+      "name": "مشروع جديد",
+      "short_name": "جديد",
+      "url": "/ar/new",
       "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
     },
     {
-      "name": "Dashboard",
-      "short_name": "Dashboard",
-      "url": "/en/dashboard",
+      "name": "مكتبة المشاريع",
+      "short_name": "المكتبة",
+      "url": "/ar/projects",
       "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
     }
   ],

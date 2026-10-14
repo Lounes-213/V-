@@ -51,13 +51,6 @@ function IconVolumeMute({ size = 15, color = "currentColor" }: { size?: number; 
   );
 }
 
-function IconDesign({ size = 18, color = "currentColor" }: { size?: number; color?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-    </svg>
-  );
-}
 
 function IconCanvas({ size = 18, color = "currentColor" }: { size?: number; color?: string }) {
   return (
@@ -164,6 +157,23 @@ function IconBook({ size = 16, color = "currentColor" }: { size?: number; color?
   );
 }
 
+function IconSmartphone({ size = 16, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+      <line x1="12" y1="18" x2="12.01" y2="18" />
+    </svg>
+  );
+}
+
+function IconZap({ size = 16, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+    </svg>
+  );
+}
+
 /* ------------------------------------------------------------------ types */
 
 type DetectionResult = {
@@ -229,13 +239,15 @@ const RECITERS: ReciterInfo[] = [
 type WordMode = "one_by_one" | "two_by_two" | "phrase" | "full_ayah";
 
 type AnimationType =
-  | "typewriter"
   | "pop_bounce"
-  | "glow_pulse"
-  | "fade_slide_up"
-  | "cinematic_zoom"
   | "shimmer_gold"
-  | "flip_reveal";
+  | "blur_focus"
+  | "fade_slide_up"
+  | "glow_pulse"
+  | "flip_reveal"
+  | "cinematic_zoom"
+  | "karaoke_sweep"
+  | "typewriter";
 
 type CursorStyle = "golden_dot" | "sparkle_star" | "pulsing_ring" | "none";
 type FontFamily = "uthmani" | "amiri" | "cairo";
@@ -248,7 +260,11 @@ type BoxStyle = "glass" | "gold_frame" | "dark_cinematic" | "none";
 type BgPreset =
   | "mosque_night"
   | "golden_emerald"
+  | "kaaba_spiritual"
+  | "islamic_arabesque"
   | "space_stars"
+  | "desert_sunset"
+  | "royal_sapphire"
   | "dark_onyx"
   | "spiritual_emerald"
   | "midnight_blue";
@@ -588,8 +604,8 @@ export default function QuranVideoPage() {
   const [customization, setCustomization] = React.useState<Customization>({
     riwayah: "hafs",
     displayScope: "canonical_complete",
-    wordMode: "phrase",
-    wordAnimation: "typewriter",
+    wordMode: "one_by_one", // Default word-by-word
+    wordAnimation: "pop_bounce", // Default smooth pop
     cursorStyle: "golden_dot",
     fontFamily: "uthmani",
     animationSpeed: "normal",
@@ -648,8 +664,11 @@ export default function QuranVideoPage() {
     };
   }, [editSurah, editFromAyah, editToAyah, customization.riwayah]);
 
-  const [designerTab, setDesignerTab] = React.useState<"quran" | "cadre" | "style" | "scene">("quran");
+  const [designerTab, setDesignerTab] = React.useState<"cadre" | "animation" | "scene" | "quran" | "settings">("cadre");
   const [isDraggingCadre, setIsDraggingCadre] = React.useState(false);
+  const [deferredInstallPrompt, setDeferredInstallPrompt] = React.useState<any>(null);
+  const [isStandaloneApp, setIsStandaloneApp] = React.useState<boolean>(false);
+  const [showInstallPwaModal, setShowInstallPwaModal] = React.useState<boolean>(false);
 
   const loopRangeRef = React.useRef<{ start: number; end: number } | null>(null);
 
@@ -691,6 +710,53 @@ export default function QuranVideoPage() {
       document.fonts.load("700 48px 'Cairo'").catch(() => undefined);
     }
   }, []);
+
+  /* PWA install detection */
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      const isStandalone =
+        window.matchMedia("(display-mode: standalone)").matches ||
+        (window.navigator as unknown as { standalone?: boolean }).standalone === true;
+      if (isStandalone) {
+        setIsStandaloneApp(true);
+      }
+
+      const handleBeforeInstall = (e: Event) => {
+        e.preventDefault();
+        setDeferredInstallPrompt(e);
+      };
+
+      const handleAppInstalled = () => {
+        setIsStandaloneApp(true);
+        setDeferredInstallPrompt(null);
+      };
+
+      window.addEventListener("beforeinstallprompt", handleBeforeInstall);
+      window.addEventListener("appinstalled", handleAppInstalled);
+
+      return () => {
+        window.removeEventListener("beforeinstallprompt", handleBeforeInstall);
+        window.removeEventListener("appinstalled", handleAppInstalled);
+      };
+    }
+  }, []);
+
+  const triggerPwaInstall = async () => {
+    if (deferredInstallPrompt) {
+      try {
+        deferredInstallPrompt.prompt();
+        const choiceResult = await deferredInstallPrompt.userChoice;
+        if (choiceResult.outcome === "accepted") {
+          setIsStandaloneApp(true);
+        }
+        setDeferredInstallPrompt(null);
+      } catch {
+        setShowInstallPwaModal(true);
+      }
+    } else {
+      setShowInstallPwaModal(true);
+    }
+  };
 
   /* Cleanup URLs and timers */
   React.useEffect(() => {
@@ -1294,6 +1360,7 @@ export default function QuranVideoPage() {
           },
           false,
           isPlaying,
+          isDraggingCadre,
         );
       };
 
@@ -1304,7 +1371,7 @@ export default function QuranVideoPage() {
 
     animId = requestAnimationFrame(render);
     return () => cancelAnimationFrame(animId);
-  }, [result, syncedData, customization, currentTime, isPlaying]);
+  }, [result, syncedData, customization, currentTime, isPlaying, isDraggingCadre]);
 
   const togglePlayPreview = () => {
     const audio = previewAudioRef.current;
@@ -1347,32 +1414,92 @@ export default function QuranVideoPage() {
     seekTo(Number(e.target.value));
   };
 
-  /* ------------------------------------------- INTERACTIVE CADRE DRAGGING */
+  /* ------------------------------------------- INTERACTIVE CADRE DRAGGING & RESIZING */
+
+  const cadreDragStateRef = React.useRef<{
+    startX: number;
+    startY: number;
+    initialWidthRatio: number;
+    initialPosY: number;
+    mode: "none" | "move" | "resize";
+  }>({ startX: 0, startY: 0, initialWidthRatio: 0.82, initialPosY: 52, mode: "none" });
 
   const handleCanvasPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = e.currentTarget;
     if (!canvas) return;
     try { canvas.setPointerCapture(e.pointerId); } catch {}
-    setIsDraggingCadre(true);
+
     const rect = canvas.getBoundingClientRect();
-    const ratio = (e.clientY - rect.top) / rect.height;
-    const clamped = Math.max(20, Math.min(80, Math.round(ratio * 100)));
-    setCustomization((prev) => ({ ...prev, wordPosY: clamped }));
+    const nx = (e.clientX - rect.left) / rect.width;
+    const ny = (e.clientY - rect.top) / rect.height;
+
+    const W = ASPECTS[customization.aspect].w;
+    const H = ASPECTS[customization.aspect].h;
+    const canvasX = nx * W;
+    const canvasY = ny * H;
+
+    const boxW = W * customization.boxWidthRatio;
+    const estimatedHeight = customization.fontSize * 1.5;
+    const boxH = estimatedHeight + customization.boxPaddingY * 2;
+    const boxX = (W - boxW) / 2;
+    const centerY = H * (customization.wordPosY / 100);
+    const boxY = centerY - boxH / 2;
+
+    const hitDist = Math.max(50, W * 0.08);
+    const nearCorners =
+      Math.hypot(canvasX - boxX, canvasY - boxY) < hitDist ||
+      Math.hypot(canvasX - (boxX + boxW), canvasY - boxY) < hitDist ||
+      Math.hypot(canvasX - boxX, canvasY - (boxY + boxH)) < hitDist ||
+      Math.hypot(canvasX - (boxX + boxW), canvasY - (boxY + boxH)) < hitDist ||
+      Math.abs(canvasX - boxX) < 40 ||
+      Math.abs(canvasX - (boxX + boxW)) < 40;
+
+    const mode = nearCorners ? "resize" : "move";
+
+    cadreDragStateRef.current = {
+      startX: canvasX,
+      startY: canvasY,
+      initialWidthRatio: customization.boxWidthRatio,
+      initialPosY: customization.wordPosY,
+      mode,
+    };
+    setIsDraggingCadre(true);
+
+    if (mode === "move") {
+      const clamped = Math.max(20, Math.min(80, Math.round(ny * 100)));
+      setCustomization((prev) => ({ ...prev, wordPosY: clamped }));
+    }
   };
 
   const handleCanvasPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!isDraggingCadre) return;
     const canvas = e.currentTarget;
     if (!canvas) return;
+
     const rect = canvas.getBoundingClientRect();
-    const ratio = (e.clientY - rect.top) / rect.height;
-    const clamped = Math.max(20, Math.min(80, Math.round(ratio * 100)));
-    setCustomization((prev) => ({ ...prev, wordPosY: clamped }));
+    const nx = (e.clientX - rect.left) / rect.width;
+    const ny = (e.clientY - rect.top) / rect.height;
+
+    const W = ASPECTS[customization.aspect].w;
+    const canvasX = nx * W;
+
+    const { mode, initialWidthRatio, startX } = cadreDragStateRef.current;
+
+    if (mode === "resize") {
+      const deltaX = Math.abs(canvasX - W / 2) - Math.abs(startX - W / 2);
+      const ratioDelta = (deltaX * 2) / W;
+      const newRatio = Math.max(0.45, Math.min(0.96, Math.round((initialWidthRatio + ratioDelta) * 100) / 100));
+      setCustomization((prev) => ({ ...prev, boxWidthRatio: newRatio }));
+    } else {
+      const clamped = Math.max(20, Math.min(80, Math.round(ny * 100)));
+      setCustomization((prev) => ({ ...prev, wordPosY: clamped }));
+    }
   };
 
   const handleCanvasPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (isDraggingCadre) {
       setIsDraggingCadre(false);
+      cadreDragStateRef.current.mode = "none";
       try {
         e.currentTarget?.releasePointerCapture(e.pointerId);
       } catch {}
@@ -1524,106 +1651,182 @@ export default function QuranVideoPage() {
   const isInSpeechNow = isTimeInSpeech(adjustedTime, syncedData?.speechRuns ?? []);
   const currentSurahMeta = ALL_SURAHS.find((s) => s.number === editSurah) || ALL_SURAHS[0]!;
 
-  /* ----------------- REUSABLE 4-SECTION DESIGNER CONTROLS ----------------- */
-  const renderDesignerTabContent = (activeTab: "quran" | "cadre" | "style" | "scene") => {
+  /* ----------------- REUSABLE 5-SECTION DESIGNER CONTROLS ----------------- */
+  const renderDesignerTabContent = (activeTab: "cadre" | "animation" | "scene" | "quran" | "settings") => {
     switch (activeTab) {
-      case "quran":
-        return (
-          <div style={{ display: "flex", flexDirection: "column", gap: 16, direction: "rtl" }}>
-            {/* Sacred Quran Read-only Text View */}
-            {result && (
-              <div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                  <label style={{ fontSize: 13, fontWeight: 700, color: "#854D0E" }}>
-                    نص الآيات الكريمة ({customization.riwayah === "warsh" ? "رواية ورش" : "رواية حفص"}):
-                  </label>
-                  <span style={{ fontSize: 11, color: "#64748B" }}>
-                    قراءة مقدسة بالرسم العثماني
-                  </span>
-                </div>
-
-                <div
-                  style={{
-                    background: "linear-gradient(135deg, #FEFDF9 0%, #FAF6ED 100%)",
-                    border: "1.5px solid #EAD8B1",
-                    borderRadius: 14,
-                    padding: "18px 20px",
-                    fontFamily: "'Amiri', serif",
-                    fontSize: 20,
-                    lineHeight: 2.2,
-                    textAlign: "center",
-                    color: "#1E293B",
-                    direction: "rtl",
-                    boxShadow: "inset 0 1px 3px rgba(0,0,0,0.02)",
-                    maxHeight: 240,
-                    overflowY: "auto",
-                  }}
-                >
-                  {result.ayahs && result.ayahs.length > 0 ? (
-                    result.ayahs.map((a) => (
-                      <span key={a.ayah} style={{ margin: "0 4px" }}>
-                        {a.text}
-                        <span
-                          style={{
-                            display: "inline-block",
-                            margin: "0 6px",
-                            color: "#D4AF37",
-                            fontSize: "0.85em",
-                            userSelect: "none",
-                          }}
-                        >
-                          ۝{a.ayah}
-                        </span>
-                      </span>
-                    ))
-                  ) : (
-                    <span>{result.uthmani}</span>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Change Ayah Range button */}
-            <button
-              onClick={() => setShowEditAyahModal(true)}
-              style={{
-                ...ghostBtn,
-                padding: "10px 16px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
-              }}
-            >
-              <IconSliders size={14} />
-              <span>تغيير أو توسيع نطاق الآيات من المصحف</span>
-            </button>
-          </div>
-        );
-
       case "cadre":
         return (
-          <div style={{ display: "flex", flexDirection: "column", gap: 18, direction: "rtl" }}>
-            {/* Cadre Y-position */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 16, direction: "rtl" }}>
+            {/* Quick Enlarge & Shrink Buttons Row */}
+            <div style={{ background: "linear-gradient(135deg, #FEF9C3 0%, #FEF08A 100%)", border: "1.5px solid #F59E0B", borderRadius: 14, padding: "12px 14px", boxShadow: "0 2px 8px rgba(245, 158, 11, 0.12)" }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "#854D0E", marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span>أزرار التكبير والتصغير السريعة للإطار:</span>
+                <span style={{ fontSize: 11, background: "#FFFFFF", padding: "2px 8px", borderRadius: 8, border: "1px solid #EAB308", fontWeight: 700 }}>
+                  {Math.round(customization.boxWidthRatio * 100)}% • {customization.fontSize}px
+                </span>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => setCustomization((c) => ({ ...c, boxWidthRatio: Math.min(0.96, Number((c.boxWidthRatio + 0.04).toFixed(2))) }))}
+                  style={{
+                    padding: "10px 12px",
+                    borderRadius: 10,
+                    background: "#FFFFFF",
+                    border: "1.5px solid #D4AF37",
+                    color: "#854D0E",
+                    fontWeight: 800,
+                    fontSize: 13,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+                  }}
+                >
+                  <span>➕ تكبير الكادر</span>
+                  <span style={{ fontSize: 11, color: "#B45309" }}>(+4%)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCustomization((c) => ({ ...c, boxWidthRatio: Math.max(0.50, Number((c.boxWidthRatio - 0.04).toFixed(2))) }))}
+                  style={{
+                    padding: "10px 12px",
+                    borderRadius: 10,
+                    background: "#FFFFFF",
+                    border: "1.5px solid #D4AF37",
+                    color: "#854D0E",
+                    fontWeight: 800,
+                    fontSize: 13,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+                  }}
+                >
+                  <span>➖ تصغير الكادر</span>
+                  <span style={{ fontSize: 11, color: "#B45309" }}>(-4%)</span>
+                </button>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => setCustomization((c) => ({ ...c, fontSize: Math.min(96, c.fontSize + 4) }))}
+                  style={{
+                    padding: "9px 12px",
+                    borderRadius: 10,
+                    background: "#FFFFFF",
+                    border: "1px solid #CBD5E1",
+                    color: "#1E293B",
+                    fontWeight: 700,
+                    fontSize: 12,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                  }}
+                >
+                  <span>➕ تكبير الخط</span>
+                  <span style={{ fontSize: 11, color: "#64748B" }}>(+4px)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCustomization((c) => ({ ...c, fontSize: Math.max(32, c.fontSize - 4) }))}
+                  style={{
+                    padding: "9px 12px",
+                    borderRadius: 10,
+                    background: "#FFFFFF",
+                    border: "1px solid #CBD5E1",
+                    color: "#1E293B",
+                    fontWeight: 700,
+                    fontSize: 12,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                  }}
+                >
+                  <span>➖ تصغير الخط</span>
+                  <span style={{ fontSize: 11, color: "#64748B" }}>(-4px)</span>
+                </button>
+              </div>
+              <div style={{ fontSize: 11, color: "#854D0E", marginTop: 8, textAlign: "center", fontWeight: 600 }}>
+                💡 يمكنك أيضاً لمس شاشة المعاينة وسحب أي من الزوايا والمقابض الأربعة مباشرة!
+              </div>
+            </div>
+
+            {/* Cadre Width Slider */}
+            <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 14, padding: "14px 16px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#854D0E" }}>
+                  عرض الإطار ومساحة السطر:
+                </span>
+                <span style={{ fontSize: 13, fontWeight: 800, color: "#854D0E" }}>
+                  {Math.round(customization.boxWidthRatio * 100)}%
+                </span>
+              </div>
+              <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+                {[
+                  { label: "عريض (92%)", val: 0.92 },
+                  { label: "متناسق (82%)", val: 0.82 },
+                  { label: "مدمج (64%)", val: 0.64 },
+                ].map((btn) => {
+                  const active = Math.abs(customization.boxWidthRatio - btn.val) < 0.03;
+                  return (
+                    <button
+                      key={btn.val}
+                      type="button"
+                      onClick={() => setCustomization((c) => ({ ...c, boxWidthRatio: btn.val }))}
+                      style={{
+                        flex: 1,
+                        padding: "7px 6px",
+                        borderRadius: 8,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        border: active ? "1.5px solid #D4AF37" : "1px solid #CBD5E1",
+                        background: active ? "#FEF9C3" : "#FFFFFF",
+                        color: active ? "#854D0E" : "#334155",
+                      }}
+                    >
+                      {btn.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <input
+                type="range"
+                min="0.50"
+                max="0.96"
+                step="0.02"
+                value={customization.boxWidthRatio}
+                onChange={(e) => setCustomization((c) => ({ ...c, boxWidthRatio: Number(e.target.value) }))}
+                style={{ width: "100%", accentColor: "#D4AF37", cursor: "pointer" }}
+              />
+            </div>
+
+            {/* Cadre Y-position Slider */}
             <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 14, padding: "14px 16px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                 <span style={{ fontSize: 13, fontWeight: 700, color: "#854D0E" }}>
                   موضع النص عمودياً (محور Y):
                 </span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#854D0E" }}>
+                <span style={{ fontSize: 13, fontWeight: 800, color: "#854D0E" }}>
                   {customization.wordPosY}%
                 </span>
               </div>
-              <p style={{ fontSize: 11, color: "#64748B", margin: "0 0 10px" }}>
-                تحريك إطار الآيات لأعلى أو أسفل (يمكنك أيضاً السحب بيدك على شاشة المعاينة مباشرة)
-              </p>
               <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
                 {[
-                  { label: "أعلى (32%)", val: 32 },
+                  { label: "أعلى (35%)", val: 35 },
                   { label: "وسط (52%)", val: 52 },
                   { label: "ريلز/تيك توك (68%)", val: 68 },
                 ].map((btn) => {
-                  const active = customization.wordPosY === btn.val;
+                  const active = Math.abs(customization.wordPosY - btn.val) <= 3;
                   return (
                     <button
                       key={btn.val}
@@ -1636,7 +1839,7 @@ export default function QuranVideoPage() {
                         fontSize: 11,
                         fontWeight: 700,
                         cursor: "pointer",
-                        border: active ? "1px solid #D4AF37" : "1px solid #CBD5E1",
+                        border: active ? "1.5px solid #D4AF37" : "1px solid #CBD5E1",
                         background: active ? "#FEF9C3" : "#FFFFFF",
                         color: active ? "#854D0E" : "#334155",
                       }}
@@ -1656,105 +1859,20 @@ export default function QuranVideoPage() {
               />
             </div>
 
-            {/* Cadre Width & Words per Line */}
+            {/* Font Size Slider */}
             <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 14, padding: "14px 16px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                 <span style={{ fontSize: 13, fontWeight: 700, color: "#854D0E" }}>
-                  عرض الإطار وعدد كلمات السطر:
+                  حجم خط الآيات الكريمة:
                 </span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#854D0E" }}>
-                  {Math.round(customization.boxWidthRatio * 100)}%
-                </span>
-              </div>
-              <p style={{ fontSize: 11, color: "#64748B", margin: "0 0 10px" }}>
-                توسيع الإطار يجمع كلمات أكثر في السطر الواحد، وتضييقه يقسم الآية على أسطر متعددة
-              </p>
-              <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-                {[
-                  { label: "عريض (92%)", val: 0.92 },
-                  { label: "متناسق (82%)", val: 0.82 },
-                  { label: "مدمج (64%)", val: 0.64 },
-                ].map((btn) => {
-                  const active = customization.boxWidthRatio === btn.val;
-                  return (
-                    <button
-                      key={btn.val}
-                      type="button"
-                      onClick={() => setCustomization((c) => ({ ...c, boxWidthRatio: btn.val }))}
-                      style={{
-                        flex: 1,
-                        padding: "7px 6px",
-                        borderRadius: 8,
-                        fontSize: 11,
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        border: active ? "1px solid #D4AF37" : "1px solid #CBD5E1",
-                        background: active ? "#FEF9C3" : "#FFFFFF",
-                        color: active ? "#854D0E" : "#334155",
-                      }}
-                    >
-                      {btn.label}
-                    </button>
-                  );
-                })}
-              </div>
-              <input
-                type="range"
-                min="0.50"
-                max="0.95"
-                step="0.02"
-                value={customization.boxWidthRatio}
-                onChange={(e) => setCustomization((c) => ({ ...c, boxWidthRatio: Number(e.target.value) }))}
-                style={{ width: "100%", accentColor: "#D4AF37", cursor: "pointer" }}
-              />
-            </div>
-
-            {/* Text Font Size */}
-            <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 14, padding: "14px 16px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#854D0E" }}>
-                  حجم خط كتابة الآيات:
-                </span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#854D0E" }}>
+                <span style={{ fontSize: 13, fontWeight: 800, color: "#854D0E" }}>
                   {customization.fontSize}px
                 </span>
-              </div>
-              <p style={{ fontSize: 11, color: "#64748B", margin: "0 0 10px" }}>
-                تكبير أو تصغير حجم كتابة الكلمات داخل الإطار
-              </p>
-              <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-                {[
-                  { label: "صغير (52px)", val: 52 },
-                  { label: "قياسي (64px)", val: 64 },
-                  { label: "كبير (76px)", val: 76 },
-                ].map((btn) => {
-                  const active = customization.fontSize === btn.val;
-                  return (
-                    <button
-                      key={btn.val}
-                      type="button"
-                      onClick={() => setCustomization((c) => ({ ...c, fontSize: btn.val }))}
-                      style={{
-                        flex: 1,
-                        padding: "7px 6px",
-                        borderRadius: 8,
-                        fontSize: 11,
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        border: active ? "1px solid #D4AF37" : "1px solid #CBD5E1",
-                        background: active ? "#FEF9C3" : "#FFFFFF",
-                        color: active ? "#854D0E" : "#334155",
-                      }}
-                    >
-                      {btn.label}
-                    </button>
-                  );
-                })}
               </div>
               <input
                 type="range"
                 min="32"
-                max="84"
+                max="92"
                 step="2"
                 value={customization.fontSize}
                 onChange={(e) => setCustomization((c) => ({ ...c, fontSize: Number(e.target.value) }))}
@@ -1762,12 +1880,12 @@ export default function QuranVideoPage() {
               />
             </div>
 
-            {/* Frame Style */}
-            <div>
+            {/* Frame Style & Border Radius */}
+            <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 14, padding: "14px 16px" }}>
               <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#854D0E", marginBottom: 8 }}>
                 نمط وتصميم الإطار:
               </label>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
                 {[
                   { id: "glass", label: "زجاجي ناعم (Glass)", desc: "شفافية سينمائية" },
                   { id: "gold", label: "إطار ذهبي فاخر", desc: "زوايا مذهبة أصيلة" },
@@ -1797,62 +1915,99 @@ export default function QuranVideoPage() {
                   );
                 })}
               </div>
+
+              {/* Sliders for padding and border radius */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, fontWeight: 700, color: "#64748B", marginBottom: 4 }}>
+                    <span>الهامش الداخلي:</span>
+                    <span>{customization.boxPaddingY}px</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="16"
+                    max="60"
+                    value={customization.boxPaddingY}
+                    onChange={(e) => setCustomization((c) => ({ ...c, boxPaddingY: Number(e.target.value) }))}
+                    style={{ width: "100%", accentColor: "#D4AF37", cursor: "pointer" }}
+                  />
+                </div>
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, fontWeight: 700, color: "#64748B", marginBottom: 4 }}>
+                    <span>انحناء الزوايا:</span>
+                    <span>{customization.boxBorderRadius}px</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="36"
+                    value={customization.boxBorderRadius}
+                    onChange={(e) => setCustomization((c) => ({ ...c, boxBorderRadius: Number(e.target.value) }))}
+                    style={{ width: "100%", accentColor: "#D4AF37", cursor: "pointer" }}
+                  />
+                </div>
+              </div>
             </div>
           </div>
         );
 
-      case "style":
+      case "animation":
         return (
-          <div style={{ display: "flex", flexDirection: "column", gap: 18, direction: "rtl" }}>
-            {/* Font Family */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 16, direction: "rtl" }}>
+            {/* Word Mode: One-by-One vs Stanza vs Full */}
             <div>
               <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#854D0E", marginBottom: 8 }}>
-                نوع الخط القرآني الشريف:
+                طريقة إظهار الآيات الكريمة:
               </label>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
                 {[
-                  { id: "uthmani", label: "مصحف المدينة", sub: "رسم عثماني أصيل" },
-                  { id: "amiri", label: "الخط الأميري", sub: "نسخ كلاسيكي فاخر" },
-                  { id: "cairo", label: "خط كايرو", sub: "حديث متوازن وواضح" },
-                ].map((f) => {
-                  const active = customization.fontFamily === f.id;
+                  { id: "one_by_one" as WordMode, label: "كلمة بكلمة", badge: "⭐ موصى به", desc: "تركيز فوري مع التلاوة" },
+                  { id: "two_by_two" as WordMode, label: "كلمتان بكلمتين", badge: "ثنائي", desc: "عرض كلمتين متتاليتين" },
+                  { id: "full_ayah" as WordMode, label: "الآية كاملة", badge: "شامل", desc: "عرض كامل النص" },
+                ].map((m) => {
+                  const active = customization.wordMode === m.id;
                   return (
                     <button
-                      key={f.id}
+                      key={m.id}
                       type="button"
-                      onClick={() => setCustomization((c) => ({ ...c, fontFamily: f.id as typeof customization.fontFamily }))}
+                      onClick={() => setCustomization((c) => ({ ...c, wordMode: m.id }))}
                       style={{
                         padding: "10px 8px",
-                        borderRadius: 10,
+                        borderRadius: 12,
                         textAlign: "center",
                         cursor: "pointer",
                         border: active ? "2px solid #D4AF37" : "1px solid #E2E8F0",
-                        background: active ? "#FEFDF7" : "#FFFFFF",
+                        background: active ? "linear-gradient(135deg, #FEF9C3 0%, #FEF08A 100%)" : "#FFFFFF",
                       }}
                     >
-                      <div style={{ fontSize: 13, fontWeight: 700, color: active ? "#854D0E" : "#1E293B" }}>
-                        {f.label}
+                      <div style={{ fontSize: 13, fontWeight: 800, color: active ? "#854D0E" : "#1E293B" }}>
+                        {m.label}
                       </div>
-                      <div style={{ fontSize: 10, color: "#64748B", marginTop: 2 }}>{f.sub}</div>
+                      <div style={{ fontSize: 9, fontWeight: 700, color: active ? "#B45309" : "#64748B", marginTop: 2 }}>
+                        {m.badge}
+                      </div>
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            {/* Word Animation */}
+            {/* Kinetic Animation Gallery (9 Animations) */}
             <div>
               <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#854D0E", marginBottom: 8 }}>
-                التأثير الحركي للكلمة النشطة:
+                التأثير الحركي والانتقال السلس (Kinetic Animations):
               </label>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                 {[
-                  { id: "typewriter", label: "الآلة الكاتبة", desc: "ظهور كلمة فكلمة مع الصوت" },
-                  { id: "shimmer_gold", label: "الوميض الذهبي", desc: "بريق ذهبي متألق لكل كلمة" },
-                  { id: "pop_bounce", label: "وثب لطيف", desc: "تكبير خفيف وسلس للكلمة" },
-                  { id: "glow_pulse", label: "النبض النوراني", desc: "توهج هادئ مع الحروف" },
-                  { id: "fade_slide", label: "انزلاق ناعم", desc: "حركة صعود هادئة وسلسة" },
-                  { id: "cinematic_zoom", label: "تقريب سينمائي", desc: "عمق ثلاثي الأبعاد جذاب" },
+                  { id: "pop_bounce", label: "وثب ارتدادي سلس", desc: "ارتداد نابضي ناعم وموجة ذهبية", tag: "الأكثر شهرة" },
+                  { id: "karaoke_sweep", label: "مسح كاريوكي ذهبي", desc: "تدفق لوني ذهبي مع نطق الكلمة", tag: "جديد فاخر" },
+                  { id: "blur_focus", label: "تركيز سينمائي ناعم", desc: "انبثاق الكلمة من ضباب نوراني ناعم", tag: "سينمائي" },
+                  { id: "shimmer_gold", label: "الوميض الذهبي", desc: "بريق ذهبي متألق لكل كلمة", tag: "مذهب" },
+                  { id: "glow_pulse", label: "النبض النوراني", desc: "توهج هادئ يتنفس مع الحروف", tag: "روحاني" },
+                  { id: "fade_slide_up", label: "انزلاق وصعود", desc: "حركة صعود هادئة وسلسة لأعلى", tag: "ناعم" },
+                  { id: "flip_reveal", label: "انقلاب ثلاثي الأبعاد", desc: "كشف مجسم أنيق للكلمات", tag: "مجسم 3D" },
+                  { id: "cinematic_zoom", label: "تقريب سينمائي", desc: "عمق ثلاثي الأبعاد جذاب", tag: "عميق" },
+                  { id: "typewriter", label: "الآلة الكاتبة", desc: "ظهور الحروف تباعاً مع الصوت", tag: "كلاسيك" },
                 ].map((a) => {
                   const active = customization.wordAnimation === a.id;
                   return (
@@ -1862,17 +2017,58 @@ export default function QuranVideoPage() {
                       onClick={() => setCustomization((c) => ({ ...c, wordAnimation: a.id as typeof customization.wordAnimation }))}
                       style={{
                         padding: "10px 12px",
-                        borderRadius: 10,
+                        borderRadius: 12,
                         textAlign: "right",
                         cursor: "pointer",
                         border: active ? "2px solid #D4AF37" : "1px solid #E2E8F0",
                         background: active ? "#FEFDF7" : "#FFFFFF",
+                        boxShadow: active ? "0 2px 8px rgba(212, 175, 55, 0.15)" : "none",
                       }}
                     >
-                      <div style={{ fontSize: 12, fontWeight: 700, color: active ? "#854D0E" : "#1E293B" }}>
-                        {a.label}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: 12, fontWeight: 800, color: active ? "#854D0E" : "#1E293B" }}>
+                          {a.label}
+                        </span>
+                        <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 4, background: active ? "#FEF9C3" : "#F1F5F9", color: active ? "#854D0E" : "#64748B" }}>
+                          {a.tag}
+                        </span>
                       </div>
-                      <div style={{ fontSize: 10, color: "#64748B", marginTop: 2 }}>{a.desc}</div>
+                      <div style={{ fontSize: 10, color: "#64748B", marginTop: 3 }}>{a.desc}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Animation Speed */}
+            <div>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#854D0E", marginBottom: 8 }}>
+                سرعة وسلاسة الحركة:
+              </label>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6 }}>
+                {[
+                  { id: "fast" as AnimationSpeed, label: "سريع وخاطف", sub: "إيقاع حيوي" },
+                  { id: "normal" as AnimationSpeed, label: "متوازن قياسي", sub: "الأنسب للتلاوة" },
+                  { id: "smooth" as AnimationSpeed, label: "متأنٍ وسلس", sub: "سكينة وخشوع" },
+                ].map((sp) => {
+                  const active = customization.animationSpeed === sp.id;
+                  return (
+                    <button
+                      key={sp.id}
+                      type="button"
+                      onClick={() => setCustomization((c) => ({ ...c, animationSpeed: sp.id }))}
+                      style={{
+                        padding: "8px 6px",
+                        borderRadius: 10,
+                        textAlign: "center",
+                        cursor: "pointer",
+                        border: active ? "1.5px solid #D4AF37" : "1px solid #E2E8F0",
+                        background: active ? "#FEF9C3" : "#FFFFFF",
+                        color: active ? "#854D0E" : "#475569",
+                      }}
+                    >
+                      <div style={{ fontSize: 12, fontWeight: 700 }}>{sp.label}</div>
+                      <div style={{ fontSize: 9, color: "#64748B", marginTop: 1 }}>{sp.sub}</div>
                     </button>
                   );
                 })}
@@ -1884,7 +2080,7 @@ export default function QuranVideoPage() {
               <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#854D0E", marginBottom: 8 }}>
                 لون التوهج النوراني (Glow):
               </label>
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {[
                   { color: "rgba(235, 185, 75, 0.95)", label: "ذهبي ملكي", hex: "#EBB94B" },
                   { color: "rgba(56, 189, 248, 0.95)", label: "سماوي نقي", hex: "#38BDF8" },
@@ -1903,7 +2099,7 @@ export default function QuranVideoPage() {
                         display: "flex",
                         alignItems: "center",
                         gap: 6,
-                        padding: "6px 10px",
+                        padding: "6px 12px",
                         borderRadius: 999,
                         cursor: "pointer",
                         border: active ? "2px solid #D4AF37" : "1px solid #E2E8F0",
@@ -1934,7 +2130,7 @@ export default function QuranVideoPage() {
 
       case "scene":
         return (
-          <div style={{ display: "flex", flexDirection: "column", gap: 18, direction: "rtl" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16, direction: "rtl" }}>
             {/* Aspect Ratio */}
             <div>
               <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#854D0E", marginBottom: 8 }}>
@@ -1967,13 +2163,12 @@ export default function QuranVideoPage() {
               </div>
             </div>
 
-            {/* Background Selection */}
+            {/* 10 Spiritual Background Presets Gallery */}
             <div>
               <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#854D0E", marginBottom: 8 }}>
-                المشهد والخلفية:
+                المشهد والخلفية الروحانية (10 خلفيات نقية):
               </label>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                {/* Original Video (if available) */}
                 {uploadedVideoUrl && (
                   <button
                     type="button"
@@ -1998,12 +2193,16 @@ export default function QuranVideoPage() {
                 )}
 
                 {([
+                  { type: "custom_color" as const, preset: "kaaba_spiritual" as const, title: "كسوة الكعبة المشرفة", desc: "حرير الكعبة مع حزام القنديل المذهب" },
+                  { type: "custom_color" as const, preset: "islamic_arabesque" as const, title: "زخرفة أرابيسك متحركة", desc: "نجمة إسلامية ثمانية تدور ببطء" },
+                  { type: "custom_color" as const, preset: "desert_sunset" as const, title: "غروب الصحراء الإيماني", desc: "شفق مغربي وهالة ذهبية هادئة" },
+                  { type: "custom_color" as const, preset: "royal_sapphire" as const, title: "الياقوت الأزرق الملكي", desc: "أعماق زرقاء مع ذرات غبار ذهبية" },
                   { type: "preset_image" as const, preset: "mosque_night" as const, title: "محراب المسجد ليلاً", desc: "أجواء إيمانية هادئة" },
-                  { type: "preset_image" as const, preset: "golden_emerald" as const, title: "الزمردي المذهب", desc: "زخارف إسلامية ملكية" },
-                  { type: "stars" as const, preset: "space_stars" as const, title: "النجوم والفضاء", desc: "تأمل في خلق الكون" },
-                  { type: "custom_color" as const, preset: "dark_onyx" as const, title: "الأسود الملكي", desc: "نقاء وتركيز عالي" },
+                  { type: "preset_image" as const, preset: "golden_emerald" as const, title: "الزمرد المذهب", desc: "فخامة وزخارف أندلسية" },
+                  { type: "stars" as const, preset: "space_stars" as const, title: "نجوم الفضاء والكون", desc: "تأمل في ملكوت السماوات" },
+                  { type: "custom_color" as const, preset: "dark_onyx" as const, title: "الأسود المعتم الفاخر", desc: "نقاء وتباين سينمائي مطلق" },
                   { type: "custom_color" as const, preset: "spiritual_emerald" as const, title: "الأخضر الروحاني", desc: "تدرج هادئ وجميل" },
-                  { type: "custom_color" as const, preset: "midnight_blue" as const, title: "الأزرق الداكن", desc: "سكينة ووقار" },
+                  { type: "custom_color" as const, preset: "midnight_blue" as const, title: "الأزرق الداكن", desc: "سكينة ووقار ليلي" },
                 ] as const).map((bg) => {
                   const active = customization.bgPreset === bg.preset;
                   return (
@@ -2013,11 +2212,12 @@ export default function QuranVideoPage() {
                       onClick={() => setCustomization((c) => ({ ...c, bgType: bg.type, bgPreset: bg.preset }))}
                       style={{
                         padding: "10px 12px",
-                        borderRadius: 10,
+                        borderRadius: 12,
                         textAlign: "right",
                         cursor: "pointer",
                         border: active ? "2px solid #D4AF37" : "1px solid #E2E8F0",
                         background: active ? "#FEFDF7" : "#FFFFFF",
+                        boxShadow: active ? "0 2px 8px rgba(212, 175, 55, 0.15)" : "none",
                       }}
                     >
                       <div style={{ fontSize: 12, fontWeight: 700, color: active ? "#854D0E" : "#1E293B" }}>
@@ -2083,6 +2283,380 @@ export default function QuranVideoPage() {
             </div>
           </div>
         );
+
+      case "quran":
+        return (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16, direction: "rtl" }}>
+            {/* Riwayah Selector Hafs vs Warsh */}
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <label style={{ fontSize: 13, fontWeight: 700, color: "#854D0E" }}>
+                  الرواية القرآنية الشريفة:
+                </label>
+                <span style={{ fontSize: 11, color: "#B45309", fontWeight: 700 }}>
+                  {customization.riwayah === "warsh" ? "مصحف ورش (رسم مغاربي بدون همز)" : "مصحف حفص (مصحف المدينة)"}
+                </span>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                {[
+                  { id: "hafs" as Riwayah, title: "رواية حفص عن عاصم", desc: "رسم مصحف المدينة النبوية (الأكثر تداولاً)" },
+                  { id: "warsh" as Riwayah, title: "رواية ورش عن نافع", desc: "طريق الأزرق (قراءة المغرب العربي والجزائر)" },
+                ].map((rw) => {
+                  const active = customization.riwayah === rw.id;
+                  return (
+                    <button
+                      key={rw.id}
+                      type="button"
+                      onClick={() => handleRiwayahChange(rw.id)}
+                      style={{
+                        padding: "10px 12px",
+                        borderRadius: 12,
+                        textAlign: "right",
+                        cursor: "pointer",
+                        border: active ? "2px solid #D4AF37" : "1px solid #E2E8F0",
+                        background: active ? "linear-gradient(135deg, #FEF9C3 0%, #FEF08A 100%)" : "#FFFFFF",
+                      }}
+                    >
+                      <div style={{ fontSize: 12, fontWeight: 800, color: active ? "#854D0E" : "#1E293B" }}>
+                        {rw.title}
+                      </div>
+                      <div style={{ fontSize: 10, color: "#64748B", marginTop: 2 }}>{rw.desc}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Sacred Quran Read-only Text View */}
+            {result && (
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                  <label style={{ fontSize: 13, fontWeight: 700, color: "#854D0E" }}>
+                    نص الآيات الكريمة المعتمد:
+                  </label>
+                  <span style={{ fontSize: 11, color: "#64748B" }}>
+                    قراءة مقدسة بالرسم العثماني
+                  </span>
+                </div>
+
+                <div
+                  style={{
+                    background: "linear-gradient(135deg, #FEFDF9 0%, #FAF6ED 100%)",
+                    border: "1.5px solid #EAD8B1",
+                    borderRadius: 14,
+                    padding: "18px 20px",
+                    fontFamily: "'Amiri', serif",
+                    fontSize: 20,
+                    lineHeight: 2.2,
+                    textAlign: "center",
+                    color: "#1E293B",
+                    direction: "rtl",
+                    boxShadow: "inset 0 1px 3px rgba(0,0,0,0.02)",
+                    maxHeight: 220,
+                    overflowY: "auto",
+                  }}
+                >
+                  {result.ayahs && result.ayahs.length > 0 ? (
+                    result.ayahs.map((a) => (
+                      <span key={a.ayah} style={{ margin: "0 4px" }}>
+                        {a.text}
+                        <span
+                          style={{
+                            display: "inline-block",
+                            margin: "0 6px",
+                            color: "#D4AF37",
+                            fontSize: "0.85em",
+                            userSelect: "none",
+                          }}
+                        >
+                          ۝{a.ayah}
+                        </span>
+                      </span>
+                    ))
+                  ) : (
+                    <span>{result.uthmani}</span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Change Ayah Range button */}
+            <button
+              onClick={() => setShowEditAyahModal(true)}
+              style={{
+                ...ghostBtn,
+                padding: "11px 16px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                borderRadius: 12,
+                border: "1.5px solid #D4AF37",
+                background: "#FEF9C3",
+                color: "#854D0E",
+                fontWeight: 700,
+              }}
+            >
+              <IconSliders size={14} />
+              <span>تغيير أو توسيع نطاق الآيات من المصحف الشريف</span>
+            </button>
+
+            {/* Font Family */}
+            <div>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#854D0E", marginBottom: 8 }}>
+                نوع الخط القرآني الشريف:
+              </label>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+                {[
+                  { id: "uthmani", label: "مصحف المدينة", sub: "رسم عثماني أصيل" },
+                  { id: "amiri", label: "الخط الأميري", sub: "نسخ كلاسيكي فاخر" },
+                  { id: "cairo", label: "خط كايرو", sub: "حديث متوازن وواضح" },
+                ].map((f) => {
+                  const active = customization.fontFamily === f.id;
+                  return (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => setCustomization((c) => ({ ...c, fontFamily: f.id as typeof customization.fontFamily }))}
+                      style={{
+                        padding: "10px 8px",
+                        borderRadius: 10,
+                        textAlign: "center",
+                        cursor: "pointer",
+                        border: active ? "2px solid #D4AF37" : "1px solid #E2E8F0",
+                        background: active ? "#FEFDF7" : "#FFFFFF",
+                      }}
+                    >
+                      <div style={{ fontSize: 13, fontWeight: 700, color: active ? "#854D0E" : "#1E293B" }}>
+                        {f.label}
+                      </div>
+                      <div style={{ fontSize: 10, color: "#64748B", marginTop: 2 }}>{f.sub}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Elements Toggles */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 14, padding: "12px 14px" }}>
+              {[
+                { key: "showBismillah" as const, label: "إظهار البسملة الشريفة في أعلى المشهد", val: customization.showBismillah },
+                { key: "showWaveform" as const, label: "إظهار موجة الصوت الحية (Waveform)", val: customization.showWaveform },
+                { key: "showAyahInfo" as const, label: "إظهار شارة السورة ورقم الآية", val: customization.showAyahInfo },
+              ].map((t) => (
+                <label key={t.key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", fontSize: 12, color: "#334155", fontWeight: 600 }}>
+                  <span>{t.label}</span>
+                  <input
+                    type="checkbox"
+                    checked={t.val}
+                    onChange={(e) => setCustomization((c) => ({ ...c, [t.key]: e.target.checked }))}
+                    style={{ width: 18, height: 18, accentColor: "#D4AF37", cursor: "pointer" }}
+                  />
+                </label>
+              ))}
+            </div>
+          </div>
+        );
+
+      case "settings":
+        return (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16, direction: "rtl" }}>
+            {/* PWA Mobile App Installation Card */}
+            <div
+              style={{
+                background: "linear-gradient(135deg, #FEF9C3 0%, #FEF08A 100%)",
+                border: "1.5px solid #F59E0B",
+                borderRadius: 16,
+                padding: "16px 18px",
+                boxShadow: "0 4px 12px rgba(245, 158, 11, 0.15)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                <div style={{ width: 38, height: 38, borderRadius: 10, background: "#FFFFFF", border: "1px solid #FDE047", display: "flex", alignItems: "center", justifyContent: "center", color: "#854D0E" }}>
+                  <IconSmartphone size={20} color="#B45309" />
+                </div>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 900, color: "#854D0E" }}>
+                    تثبيت التطبيق على الهاتف (PWA App)
+                  </div>
+                  <div style={{ fontSize: 11, color: "#92400E" }}>
+                    {isStandaloneApp ? "✓ التطبيق مثبت ويعمل كبرنامج هاتف أصيل" : "استخدم التطبيق بدون متصفح بشاشة كاملة وبسرعة فائقة"}
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={triggerPwaInstall}
+                style={{
+                  width: "100%",
+                  marginTop: 8,
+                  padding: "10px 14px",
+                  borderRadius: 10,
+                  background: "#FFFFFF",
+                  border: "1.5px solid #D4AF37",
+                  color: "#854D0E",
+                  fontWeight: 800,
+                  fontSize: 13,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+                }}
+              >
+                <IconSmartphone size={16} color="#B45309" />
+                <span>{isStandaloneApp ? "عرض معلومات التطبيق المثبت" : "تثبيت التطبيق على الشاشة الرئيسية الآن"}</span>
+              </button>
+            </div>
+
+            {/* Audio Source / Reciters */}
+            <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 14, padding: "14px 16px" }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#854D0E", marginBottom: 8 }}>
+                مصدر التلاوة الصوتية والقارئ:
+              </div>
+              <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                <button
+                  type="button"
+                  onClick={() => setCustomization((c) => ({ ...c, selectedAudioSource: "original" }))}
+                  style={{
+                    flex: 1,
+                    padding: "8px 10px",
+                    borderRadius: 10,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    border: customization.selectedAudioSource === "original" ? "2px solid #D4AF37" : "1px solid #CBD5E1",
+                    background: customization.selectedAudioSource === "original" ? "#FEF9C3" : "#FFFFFF",
+                    color: customization.selectedAudioSource === "original" ? "#854D0E" : "#475569",
+                    cursor: "pointer",
+                  }}
+                >
+                  الصوت المرفوع / التسجيل
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCustomization((c) => ({ ...c, selectedAudioSource: selectedReciterId }))}
+                  style={{
+                    flex: 1,
+                    padding: "8px 10px",
+                    borderRadius: 10,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    border: typeof customization.selectedAudioSource === "number" ? "2px solid #D4AF37" : "1px solid #CBD5E1",
+                    background: typeof customization.selectedAudioSource === "number" ? "#FEF9C3" : "#FFFFFF",
+                    color: typeof customization.selectedAudioSource === "number" ? "#854D0E" : "#475569",
+                    cursor: "pointer",
+                  }}
+                >
+                  قراء الاستوديو المعتمدين
+                </button>
+              </div>
+
+              {typeof customization.selectedAudioSource === "number" && (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                  {RECITERS.map((rec) => {
+                    const active = (customization.selectedAudioSource as number) === rec.id;
+                    return (
+                      <button
+                        key={rec.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedReciterId(rec.id);
+                          setCustomization((c) => ({ ...c, selectedAudioSource: rec.id }));
+                        }}
+                        style={{
+                          padding: "8px 10px",
+                          borderRadius: 8,
+                          textAlign: "right",
+                          fontSize: 11,
+                          fontWeight: 700,
+                          border: active ? "1.5px solid #D4AF37" : "1px solid #E2E8F0",
+                          background: active ? "#FEFDF7" : "#FFFFFF",
+                          color: active ? "#854D0E" : "#334155",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <div>{rec.name}</div>
+                        <div style={{ fontSize: 9, color: "#64748B" }}>{rec.en}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Sync Offset Fine-Tuning */}
+            <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 14, padding: "14px 16px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#854D0E" }}>
+                  الضبط الدقيق لمزامنة الكلمات (Sync Offset):
+                </span>
+                <span style={{ fontSize: 13, fontWeight: 800, color: "#854D0E", direction: "ltr" }}>
+                  {customization.syncOffsetSec > 0 ? `+${customization.syncOffsetSec.toFixed(2)}` : customization.syncOffsetSec.toFixed(2)}s
+                </span>
+              </div>
+              <p style={{ fontSize: 11, color: "#64748B", margin: "0 0 10px" }}>
+                تقديم أو تأخير ظهور الكلمات بأجزاء من الثانية لمطابقة صوت القارئ بدقة متناهية
+              </p>
+              <input
+                type="range"
+                min="-1.0"
+                max="1.0"
+                step="0.05"
+                value={customization.syncOffsetSec}
+                onChange={(e) => setCustomization((c) => ({ ...c, syncOffsetSec: Number(e.target.value) }))}
+                style={{ width: "100%", accentColor: "#D4AF37", cursor: "pointer" }}
+              />
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#64748B", marginTop: 4 }}>
+                <span>-1.0 ثانية (تقديم)</span>
+                <button
+                  type="button"
+                  onClick={() => setCustomization((c) => ({ ...c, syncOffsetSec: 0 }))}
+                  style={{ background: "none", border: "none", color: "#D4AF37", fontWeight: 700, cursor: "pointer", fontSize: 11 }}
+                >
+                  إعادة للصفر (0.00s)
+                </button>
+                <span>+1.0 ثانية (تأخير)</span>
+              </div>
+            </div>
+
+            {/* Export Quality */}
+            <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 14, padding: "14px 16px" }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#854D0E", marginBottom: 8 }}>
+                دقة تصدير الفيديو:
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                {[
+                  { id: "1080p" as const, label: "1080p Full HD", desc: "دقة سينمائية كاملة (موصى به)" },
+                  { id: "720p" as const, label: "720p HD", desc: "تصدير فوري خفيف الحجم" },
+                ].map((q) => {
+                  const active = exportQuality === q.id;
+                  return (
+                    <button
+                      key={q.id}
+                      type="button"
+                      onClick={() => setExportQuality(q.id)}
+                      style={{
+                        padding: "9px 10px",
+                        borderRadius: 10,
+                        fontSize: 12,
+                        fontWeight: 700,
+                        textAlign: "right",
+                        border: active ? "2px solid #D4AF37" : "1px solid #CBD5E1",
+                        background: active ? "#FEFDF7" : "#FFFFFF",
+                        color: active ? "#854D0E" : "#334155",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <div>{q.label}</div>
+                      <div style={{ fontSize: 10, color: "#64748B", marginTop: 2 }}>{q.desc}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        );
     }
   };
 
@@ -2119,6 +2693,15 @@ export default function QuranVideoPage() {
         onExportQualityChange={setExportQuality}
       />
 
+      {/* 2.5 PWA Mobile App Install Modal */}
+      <PwaInstallModal
+        show={showInstallPwaModal}
+        onClose={() => setShowInstallPwaModal(false)}
+        onDirectInstall={triggerPwaInstall}
+        hasDirectPrompt={Boolean(deferredInstallPrompt)}
+        isInstalled={isStandaloneApp}
+      />
+
       {/* Hidden audio for preview */}
       {activeAudioUrl ? (
         <audio
@@ -2132,13 +2715,13 @@ export default function QuranVideoPage() {
       {/* Hidden export canvas */}
       <canvas ref={exportCanvasRef} style={{ display: "none" }} />
 
-      {/* 3. Standalone App Header */}
+      {/* 3. Standalone Clean Minimal App Header */}
       <header
         style={{
           background: "#FFFFFF",
           borderBottom: "1px solid #E2E8F0",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-          padding: "10px 16px",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
+          padding: "8px 16px",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
@@ -2148,13 +2731,13 @@ export default function QuranVideoPage() {
           width: "100%",
         }}
       >
-        {/* Right: App Brand & Logo */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        {/* Right: Clean App Brand */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div
             style={{
-              width: 38,
-              height: 38,
-              borderRadius: 10,
+              width: 34,
+              height: 34,
+              borderRadius: 9,
               background: "linear-gradient(135deg, #FEF9C3 0%, #FEF08A 100%)",
               border: "1px solid #FDE047",
               display: "flex",
@@ -2163,19 +2746,19 @@ export default function QuranVideoPage() {
               color: "#854D0E",
             }}
           >
-            <IconQuran size={22} color="#B45309" />
+            <IconQuran size={20} color="#B45309" />
           </div>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontSize: 18, fontWeight: 900, color: "#0F172A", letterSpacing: "-0.01em" }}>
+              <span style={{ fontSize: 17, fontWeight: 900, color: "#0F172A", letterSpacing: "-0.01em" }}>
                 رِوَايَة
               </span>
               <span
                 style={{
                   fontSize: 10,
                   fontWeight: 800,
-                  padding: "1px 6px",
-                  borderRadius: 6,
+                  padding: "1px 5px",
+                  borderRadius: 5,
                   background: "#FEF9C3",
                   color: "#854D0E",
                   border: "1px solid #FDE047",
@@ -2184,72 +2767,79 @@ export default function QuranVideoPage() {
                 مُصمّم الآيات
               </span>
             </div>
-            <div style={{ fontSize: 11, color: "#64748B", fontWeight: 500 }}>
-              تصميم ومزامنة مقاطع القرآن الكريم
-            </div>
           </div>
         </div>
 
-        {/* Center: Active Riwayah pill & Quick actions */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {/* Center: Surah & Ayah Badge + Riwayah Pill */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <button
+            type="button"
+            onClick={() => setShowEditAyahModal(true)}
+            style={{
+              padding: "5px 10px",
+              fontSize: 12,
+              fontWeight: 800,
+              background: "#F8FAFC",
+              border: "1px solid #E2E8F0",
+              borderRadius: 8,
+              color: "#1E293B",
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              cursor: "pointer",
+            }}
+            title="انقر لتغيير السورة والآيات"
+          >
+            <span>{currentSurahMeta.nameArabic}</span>
+            <span style={{ color: "#D4AF37", fontSize: 11 }}>({editFromAyah} - {editToAyah})</span>
+          </button>
+
           <button
             type="button"
             onClick={() => handleRiwayahChange(customization.riwayah === "hafs" ? "warsh" : "hafs")}
-            title="انقر هنا للتبديل الفوري بين ورش وحفص"
+            title="انقر للتبديل بين رواية ورش وحفص"
             style={{
-              padding: "6px 14px",
-              fontSize: 12,
+              padding: "5px 10px",
+              fontSize: 11,
               fontWeight: 800,
               background: "linear-gradient(135deg, #FEF9C3 0%, #FEF08A 100%)",
               border: "1.5px solid #F59E0B",
-              borderRadius: 10,
+              borderRadius: 8,
               color: "#854D0E",
               display: "flex",
               alignItems: "center",
-              gap: 6,
+              gap: 4,
               cursor: "pointer",
-              boxShadow: "0 2px 6px rgba(245, 158, 11, 0.15)",
-              transition: "all 0.15s ease",
+              boxShadow: "0 1px 4px rgba(245, 158, 11, 0.15)",
             }}
           >
-            <span>{customization.riwayah === "warsh" ? "رواية ورش عن نافع" : "رواية حفص عن عاصم"}</span>
-            <span style={{ fontSize: 11, color: "#B45309", fontWeight: 900 }}>⇄ تبديل</span>
+            <span>{customization.riwayah === "warsh" ? "ورش" : "حفص"}</span>
+            <span style={{ fontSize: 10, color: "#B45309" }}>⇄</span>
           </button>
-
-          {stage !== "idle" && (
-            <button
-              onClick={() => {
-                if (previewAudioRef.current) previewAudioRef.current.pause();
-                setStage("idle");
-              }}
-              style={{
-                ...ghostBtn,
-                padding: "5px 10px",
-                fontSize: 12,
-                color: "#475569",
-              }}
-              title="العودة لاختيار سورة أو آيات أخرى"
-            >
-              تغيير الآيات
-            </button>
-          )}
         </div>
 
-        {/* Left: Settings & Top Export */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {/* Left: Quick Install App + Export Action */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <button
-            onClick={() => setShowSettingsModal(true)}
+            type="button"
+            onClick={triggerPwaInstall}
             style={{
-              ...ghostBtn,
-              padding: "7px 10px",
+              padding: "6px 10px",
+              fontSize: 12,
+              fontWeight: 700,
+              background: isStandaloneApp ? "#ECFDF5" : "#FFFFFF",
+              border: isStandaloneApp ? "1px solid #A7F3D0" : "1px solid #E2E8F0",
+              borderRadius: 8,
+              color: isStandaloneApp ? "#065F46" : "#475569",
               display: "flex",
               alignItems: "center",
-              justifyContent: "center",
-              color: "#475569",
+              gap: 5,
+              cursor: "pointer",
             }}
-            title="إعدادات التطبيق"
+            title={isStandaloneApp ? "التطبيق مثبت على جهازك" : "تثبيت التطبيق على الشاشة الرئيسية"}
           >
-            <IconSettings size={18} />
+            <IconSmartphone size={14} color={isStandaloneApp ? "#059669" : "#64748B"} />
+            <span className="hidden-on-tiny-screen">{isStandaloneApp ? "تطبيق مثبت" : "تثبيت"}</span>
           </button>
 
           {(stage === "detected" || stage === "exporting" || stage === "exported") && (
@@ -2259,15 +2849,15 @@ export default function QuranVideoPage() {
               style={{
                 ...primaryBtn,
                 width: "auto",
-                padding: "7px 16px",
-                fontSize: 13,
+                padding: "6px 14px",
+                fontSize: 12,
                 display: "flex",
                 alignItems: "center",
-                gap: 6,
+                gap: 5,
               }}
             >
-              <IconExport size={15} color="#1A1300" />
-              <span>{stage === "exporting" ? `${exportProgress}%` : "تصدير الفيديو"}</span>
+              <IconExport size={14} color="#1A1300" />
+              <span>{stage === "exporting" ? `${exportProgress}%` : "تصدير"}</span>
             </button>
           )}
         </div>
@@ -3181,38 +3771,39 @@ export default function QuranVideoPage() {
               {/* Right Column: 4-Section Designer Panel */}
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                 <Card>
-                  {/* 4 Professional Designer Tabs */}
+                  {/* 5 Professional Designer Tabs */}
                   <div
                     style={{
                       display: "grid",
-                      gridTemplateColumns: "repeat(4, 1fr)",
-                      gap: 6,
+                      gridTemplateColumns: "repeat(5, 1fr)",
+                      gap: 4,
                       background: "#F1F5F9",
-                      padding: 5,
+                      padding: 4,
                       borderRadius: 14,
                       direction: "rtl",
-                      marginBottom: 18,
+                      marginBottom: 16,
                     }}
                   >
                     {[
-                      { id: "quran", label: "الآيات والرواية", icon: <IconQuran size={16} /> },
-                      { id: "cadre", label: "إطار النص", icon: <IconCanvas size={16} /> },
-                      { id: "style", label: "الخط والحركة", icon: <IconDesign size={16} /> },
-                      { id: "scene", label: "المشهد والخلفية", icon: <IconSparkles size={16} /> },
+                      { id: "cadre" as const, label: "إطار النص", icon: <IconCanvas size={15} /> },
+                      { id: "animation" as const, label: "الحركة والانتقال", icon: <IconZap size={15} /> },
+                      { id: "scene" as const, label: "المشهد والخلفية", icon: <IconSparkles size={15} /> },
+                      { id: "quran" as const, label: "المصحف والرواية", icon: <IconQuran size={15} /> },
+                      { id: "settings" as const, label: "إعدادات وتثبيت", icon: <IconSettings size={15} /> },
                     ].map((tab) => {
                       const active = designerTab === tab.id;
                       return (
                         <button
                           key={tab.id}
                           type="button"
-                          onClick={() => setDesignerTab(tab.id as typeof designerTab)}
+                          onClick={() => setDesignerTab(tab.id)}
                           style={{
                             display: "flex",
                             flexDirection: "column",
                             alignItems: "center",
                             justifyContent: "center",
-                            gap: 4,
-                            padding: "8px 4px",
+                            gap: 3,
+                            padding: "7px 2px",
                             borderRadius: 10,
                             border: active ? "1px solid #D4AF37" : "1px solid transparent",
                             background: active ? "linear-gradient(135deg, #FEF9C3 0%, #FEF08A 100%)" : "transparent",
@@ -3371,10 +3962,11 @@ export default function QuranVideoPage() {
                 >
                   <div style={{ display: "flex", gap: 4, flex: 1 }}>
                     {[
-                      { id: "cadre" as const, label: "إطار النص", icon: <IconCanvas size={13} /> },
-                      { id: "style" as const, label: "الخط والحركة", icon: <IconDesign size={13} /> },
+                      { id: "cadre" as const, label: "الكادر", icon: <IconCanvas size={13} /> },
+                      { id: "animation" as const, label: "الحركة", icon: <IconZap size={13} /> },
                       { id: "scene" as const, label: "المشهد", icon: <IconSparkles size={13} /> },
-                      { id: "quran" as const, label: "الآيات", icon: <IconQuran size={13} /> },
+                      { id: "quran" as const, label: "المصحف", icon: <IconQuran size={13} /> },
+                      { id: "settings" as const, label: "إعدادات", icon: <IconSettings size={13} /> },
                     ].map((tab) => {
                       const active = designerTab === tab.id;
                       return (
@@ -3392,12 +3984,13 @@ export default function QuranVideoPage() {
                           style={{
                             flex: 1,
                             display: "flex",
+                            flexDirection: "column",
                             alignItems: "center",
                             justifyContent: "center",
-                            gap: 4,
-                            padding: "6px 2px",
+                            gap: 2,
+                            padding: "6px 1px",
                             borderRadius: 8,
-                            fontSize: 11,
+                            fontSize: 10,
                             fontWeight: 700,
                             border: active ? "1px solid #D4AF37" : "1px solid transparent",
                             background: active ? "linear-gradient(135deg, #FEF9C3 0%, #FEF08A 100%)" : "#F8FAFC",
@@ -3406,7 +3999,7 @@ export default function QuranVideoPage() {
                           }}
                         >
                           {tab.icon}
-                          <span>{tab.label}</span>
+                          <span style={{ whiteSpace: "nowrap" }}>{tab.label}</span>
                         </button>
                       );
                     })}
@@ -3676,6 +4269,7 @@ function drawQuranCanvasFrame(
   },
   isExport = false,
   isPlaying = false,
+  isDraggingCadre = false,
 ) {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
@@ -3748,7 +4342,7 @@ function drawQuranCanvasFrame(
 
   // 5. Render Bounding Box and Words with Y-position
   ctx.save();
-  renderWordsAndBox(ctx, W, H, words, activeWordIdx, isInSpeech, speechRuns, time, custom, result, isExport, isPlaying);
+  renderWordsAndBox(ctx, W, H, words, activeWordIdx, isInSpeech, speechRuns, time, custom, result, isExport, isPlaying, isDraggingCadre);
   ctx.restore();
 
   // 6. Draw Live Waveform
@@ -3844,6 +4438,128 @@ function drawBackground(
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, W, H);
     drawVignette(ctx, W, H, 0.35);
+    return;
+  }
+
+  if (custom.bgPreset === "kaaba_spiritual") {
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, "#08080B");
+    grad.addColorStop(0.5, "#141419");
+    grad.addColorStop(1, "#08080B");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    const radial = ctx.createRadialGradient(W / 2, H * 0.45, 0, W / 2, H * 0.45, W * 0.7);
+    radial.addColorStop(0, "rgba(212, 175, 55, 0.22)");
+    radial.addColorStop(0.5, "rgba(245, 158, 11, 0.08)");
+    radial.addColorStop(1, "rgba(0, 0, 0, 0)");
+    ctx.fillStyle = radial;
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.save();
+    ctx.strokeStyle = "rgba(212, 175, 55, 0.35)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(W * 0.08, H * 0.16);
+    ctx.lineTo(W * 0.92, H * 0.16);
+    ctx.moveTo(W * 0.08, H * 0.175);
+    ctx.lineTo(W * 0.92, H * 0.175);
+    ctx.stroke();
+
+    ctx.font = "600 24px 'Amiri', serif";
+    ctx.direction = "rtl";
+    ctx.textAlign = "center";
+    ctx.fillStyle = "rgba(212, 175, 55, 0.45)";
+    ctx.fillText("لا إله إلا الله محمد رسول الله", W / 2, H * 0.15);
+    ctx.restore();
+    return;
+  }
+
+  if (custom.bgPreset === "islamic_arabesque") {
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, "#02160D");
+    grad.addColorStop(0.5, "#0A291A");
+    grad.addColorStop(1, "#02160D");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.save();
+    ctx.translate(W / 2, H * 0.5);
+    ctx.rotate(time * 0.02);
+    ctx.strokeStyle = "rgba(212, 175, 55, 0.14)";
+    ctx.lineWidth = 1.5;
+    const rOuter = W * 0.38;
+    const rInner = W * 0.22;
+    for (let k = 0; k < 2; k++) {
+      ctx.beginPath();
+      for (let i = 0; i < 8; i++) {
+        const ang = (i * Math.PI) / 4 + (k * Math.PI) / 8;
+        const r = i % 2 === 0 ? rOuter : rInner;
+        const x = Math.cos(ang) * r;
+        const y = Math.sin(ang) * r;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    const radial = ctx.createRadialGradient(W / 2, H * 0.5, 0, W / 2, H * 0.5, W * 0.65);
+    radial.addColorStop(0, "rgba(52, 211, 153, 0.12)");
+    radial.addColorStop(1, "rgba(0, 0, 0, 0)");
+    ctx.fillStyle = radial;
+    ctx.fillRect(0, 0, W, H);
+    return;
+  }
+
+  if (custom.bgPreset === "desert_sunset") {
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, "#130E26");
+    grad.addColorStop(0.35, "#3D1328");
+    grad.addColorStop(0.65, "#83281E");
+    grad.addColorStop(0.9, "#C25E1A");
+    grad.addColorStop(1, "#EAB308");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+    drawVignette(ctx, W, H, 0.35);
+    return;
+  }
+
+  if (custom.bgPreset === "royal_sapphire") {
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, "#051124");
+    grad.addColorStop(0.5, "#0E244D");
+    grad.addColorStop(1, "#051124");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    for (let i = 0; i < 24; i++) {
+      const sx = ((i * 137.5) % W);
+      const sy = ((H + time * 20 * ((i % 3) + 1) + i * 45) % H);
+      const alpha = 0.2 + 0.5 * Math.abs(Math.sin(time * 1.5 + i));
+      ctx.fillStyle = `rgba(255, 235, 175, ${alpha})`;
+      ctx.beginPath();
+      ctx.arc(sx, sy, 1.8, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    const radial = ctx.createRadialGradient(W / 2, H * 0.5, 0, W / 2, H * 0.5, W * 0.65);
+    radial.addColorStop(0, "rgba(56, 189, 248, 0.12)");
+    radial.addColorStop(1, "rgba(0, 0, 0, 0)");
+    ctx.fillStyle = radial;
+    ctx.fillRect(0, 0, W, H);
+    return;
+  }
+
+  if (custom.bgPreset === "dark_onyx") {
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, "#07080B");
+    grad.addColorStop(0.5, "#0F1117");
+    grad.addColorStop(1, "#07080B");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+    drawVignette(ctx, W, H, 0.3);
     return;
   }
 
@@ -3991,6 +4707,7 @@ function renderWordsAndBox(
   result?: DetectionResult,
   isExport = false,
   isPlaying = false,
+  isDraggingCadre = false,
 ) {
   const centerY = H * (custom.wordPosY / 100);
   const fontSize = custom.fontSize;
@@ -4045,36 +4762,85 @@ function renderWordsAndBox(
     ctx.restore();
   }
 
-  // Draw tactile corner framing brackets in live preview to make the cadre clearly visible
+  // Draw tactile corner framing brackets & interactive resize grips in live preview
   if (!isExport) {
     ctx.save();
-    ctx.strokeStyle = "rgba(212, 175, 55, 0.45)";
-    ctx.lineWidth = 1.5;
-    const bl = 16;
-    // Top-left
+
+    // While dragging: draw active dashed boundary
+    if (isDraggingCadre) {
+      ctx.save();
+      ctx.setLineDash([8, 6]);
+      ctx.strokeStyle = "rgba(245, 158, 11, 0.85)";
+      ctx.lineWidth = 2;
+      roundRect(ctx, boxX, boxY, boxW, boxH, custom.boxBorderRadius);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    ctx.strokeStyle = "#D4AF37";
+    ctx.lineWidth = 2;
+    const bl = 20;
+
+    // Corner brackets
     ctx.beginPath();
     ctx.moveTo(boxX, boxY + bl);
     ctx.lineTo(boxX, boxY);
     ctx.lineTo(boxX + bl, boxY);
     ctx.stroke();
-    // Top-right
+
     ctx.beginPath();
     ctx.moveTo(boxX + boxW - bl, boxY);
     ctx.lineTo(boxX + boxW, boxY);
     ctx.lineTo(boxX + boxW, boxY + bl);
     ctx.stroke();
-    // Bottom-left
+
     ctx.beginPath();
     ctx.moveTo(boxX, boxY + boxH - bl);
     ctx.lineTo(boxX, boxY + boxH);
     ctx.lineTo(boxX + bl, boxY + boxH);
     ctx.stroke();
-    // Bottom-right
+
     ctx.beginPath();
     ctx.moveTo(boxX + boxW - bl, boxY + boxH);
     ctx.lineTo(boxX + boxW, boxY + boxH);
     ctx.lineTo(boxX + boxW, boxY + boxH - bl);
     ctx.stroke();
+
+    // 4 Corner Resize Grips (circles with golden stroke)
+    const corners = [
+      { x: boxX, y: boxY },
+      { x: boxX + boxW, y: boxY },
+      { x: boxX, y: boxY + boxH },
+      { x: boxX + boxW, y: boxY + boxH },
+    ];
+    for (const c of corners) {
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, 7, 0, Math.PI * 2);
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fill();
+      ctx.strokeStyle = "#D4AF37";
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+    }
+
+    // Live HUD badge when dragging
+    if (isDraggingCadre) {
+      const badgeText = `↔ عرض: ${Math.round(custom.boxWidthRatio * 100)}%  •  ↕ موضع: ${custom.wordPosY}%  •  خط: ${custom.fontSize}px`;
+      ctx.font = "700 24px 'Cairo', 'Amiri', sans-serif";
+      const tw = ctx.measureText(badgeText).width;
+      const bY = Math.max(30, boxY - 26);
+      ctx.fillStyle = "rgba(15, 23, 42, 0.9)";
+      ctx.strokeStyle = "rgba(212, 175, 55, 0.85)";
+      ctx.lineWidth = 1.5;
+      roundRect(ctx, W / 2 - tw / 2 - 16, bY - 18, tw + 32, 36, 18);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#FFE885";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(badgeText, W / 2, bY);
+    }
+
     ctx.restore();
   }
 
@@ -4129,28 +4895,45 @@ function renderWordsAndBox(
       textToDraw = activeWord.text.slice(0, charCount);
     } else if (custom.wordAnimation === "pop_bounce" && isPlaying) {
       const spring = progress < 0.35
-        ? 0.7 + 0.65 * (progress / 0.35)
-        : 1.35 - 0.2 * ((progress - 0.35) / 0.65);
+        ? 0.75 + 0.6 * (progress / 0.35)
+        : 1.35 - 0.21 * ((progress - 0.35) / 0.65);
       currentScale *= spring;
       currentShadowBlur = 48;
       if (progress < 0.55) {
         ctx.save();
-        const r = 50 + 90 * (progress / 0.55);
-        ctx.strokeStyle = `rgba(43, 127, 255, ${0.45 * (1 - progress / 0.55)})`;
+        const r = 40 + 90 * (progress / 0.55);
+        ctx.strokeStyle = `rgba(235, 185, 75, ${0.55 * (1 - progress / 0.55)})`;
         ctx.lineWidth = 2.5;
         ctx.beginPath();
         ctx.arc(W / 2, centerY, r, 0, Math.PI * 2);
         ctx.stroke();
         ctx.restore();
       }
+    } else if (custom.wordAnimation === "blur_focus" && isPlaying) {
+      const focusPhase = Math.min(1, progress * 2.2);
+      currentScale *= (1.25 - 0.11 * focusPhase);
+      currentShadowBlur = Math.round(56 * (1 - focusPhase * 0.5) + 12);
+      currentAlpha = Math.min(1, 0.4 + 0.6 * focusPhase);
     } else if (custom.wordAnimation === "shimmer_gold" && isPlaying) {
-      const shimmerOffset = (progress * 2 - 1) * 160;
-      const grad = ctx.createLinearGradient(W / 2 + shimmerOffset - 100, centerY, W / 2 + shimmerOffset + 100, centerY);
-      grad.addColorStop(0, "#FFE97A");
+      const shimmerOffset = (progress * 2 - 1) * 200;
+      const grad = ctx.createLinearGradient(W / 2 - shimmerOffset - 120, centerY, W / 2 - shimmerOffset + 120, centerY);
+      grad.addColorStop(0, "#F59E0B");
+      grad.addColorStop(0.3, "#FFE885");
       grad.addColorStop(0.5, "#FFFFFF");
-      grad.addColorStop(1, "#FFE97A");
+      grad.addColorStop(0.7, "#FFE885");
+      grad.addColorStop(1, "#F59E0B");
       ctx.fillStyle = grad;
-      currentShadowBlur = 36 + 22 * Math.sin(progress * Math.PI);
+      currentShadowBlur = 38 + 26 * Math.sin(progress * Math.PI);
+    } else if (custom.wordAnimation === "karaoke_sweep" && isPlaying) {
+      const wordW = ctx.measureText(textToDraw).width;
+      const grad = ctx.createLinearGradient(W / 2 + wordW / 2, centerY, W / 2 - wordW / 2, centerY);
+      const fillRatio = Math.min(1, Math.max(0, progress * 1.15));
+      grad.addColorStop(0, "#FFE885");
+      grad.addColorStop(Math.min(1, fillRatio), "#FFE885");
+      grad.addColorStop(Math.min(1, fillRatio + 0.08), "rgba(255, 255, 255, 0.75)");
+      grad.addColorStop(1, "rgba(255, 255, 255, 0.75)");
+      ctx.fillStyle = grad;
+      currentShadowBlur = 32;
     } else if (custom.wordAnimation === "flip_reveal" && isPlaying) {
       const flipPhase = Math.min(1, progress * 1.6);
       const scaleY = flipPhase < 0.5 ? 1 - flipPhase * 2 : (flipPhase - 0.5) * 2;
@@ -4159,7 +4942,9 @@ function renderWordsAndBox(
       ctx.translate(-W / 2, -centerY);
       currentShadowBlur = 42;
     } else if (custom.wordAnimation === "glow_pulse" && isPlaying) {
-      currentShadowBlur = 24 + 36 * Math.sin(progress * Math.PI);
+      const pulse = Math.abs(Math.sin(progress * Math.PI * 2));
+      currentScale *= (1.0 + 0.08 * pulse);
+      currentShadowBlur = 24 + 36 * pulse;
     } else if (custom.wordAnimation === "fade_slide_up" && isPlaying) {
       currentOffsetY = (1 - Math.min(1, progress * 2.2)) * 26;
       currentAlpha = Math.min(1, progress * 2.8);
@@ -4528,6 +5313,19 @@ function renderTextLinesCentered(
             const spring = progress < 0.35 ? 0.85 + 0.4 * (progress / 0.35) : 1.25 - 0.17 * ((progress - 0.35) / 0.65);
             scale = 1.0 * spring;
             blur = 46;
+          } else if (custom.wordAnimation === "blur_focus") {
+            const focusPhase = Math.min(1, progress * 2.2);
+            scale = 1.0 * (1.2 - 0.12 * focusPhase);
+            blur = Math.round(52 * (1 - focusPhase * 0.5) + 14);
+          } else if (custom.wordAnimation === "karaoke_sweep") {
+            const grad = ctx.createLinearGradient(cursorX, slideY, cursorX - itemW, slideY);
+            const fillRatio = Math.min(1, Math.max(0, progress * 1.15));
+            grad.addColorStop(0, "#FFE885");
+            grad.addColorStop(Math.min(1, fillRatio), "#FFE885");
+            grad.addColorStop(Math.min(1, fillRatio + 0.08), "rgba(255, 255, 255, 0.75)");
+            grad.addColorStop(1, "rgba(255, 255, 255, 0.75)");
+            ctx.fillStyle = grad;
+            blur = 34;
           } else if (custom.wordAnimation === "shimmer_gold") {
             const grad = ctx.createLinearGradient(cursorX - itemW, slideY, cursorX, slideY);
             grad.addColorStop(0, "#EBB94B");
@@ -4830,6 +5628,230 @@ function SplashScreen({ onDismiss }: { onDismiss: () => void }) {
 
         <div style={{ fontSize: 12, color: "#94A3B8", marginTop: 16 }}>
           انقر للمتابعة الفورية
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PwaInstallModal({
+  show,
+  onClose,
+  onDirectInstall,
+  hasDirectPrompt,
+  isInstalled,
+}: {
+  show: boolean;
+  onClose: () => void;
+  onDirectInstall: () => void;
+  hasDirectPrompt: boolean;
+  isInstalled: boolean;
+}) {
+  const [platform, setPlatform] = React.useState<"ios" | "android">("ios");
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      const ua = window.navigator.userAgent.toLowerCase();
+      if (/iphone|ipad|ipod/.test(ua)) {
+        setPlatform("ios");
+      } else {
+        setPlatform("android");
+      }
+    }
+  }, [show]);
+
+  if (!show) return null;
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(15, 23, 42, 0.55)",
+        backdropFilter: "blur(6px)",
+        zIndex: 9999,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 16,
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        style={{
+          background: "#FFFFFF",
+          border: "1.5px solid #FDE047",
+          borderRadius: 24,
+          padding: "24px 26px",
+          direction: "rtl",
+          boxShadow: "0 24px 60px rgba(15, 23, 42, 0.2)",
+          maxWidth: 480,
+          width: "100%",
+          maxHeight: "92vh",
+          overflowY: "auto",
+          fontFamily: "'Cairo', 'Amiri', sans-serif",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 42, height: 42, borderRadius: 12, background: "linear-gradient(135deg, #FEF9C3, #FEF08A)", border: "1px solid #FDE047", color: "#854D0E", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <IconSmartphone size={22} color="#B45309" />
+            </div>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 900, color: "#0F172A" }}>
+                تثبيت تطبيق "رِوَايَة" على هاتفك
+              </h3>
+              <p style={{ margin: "2px 0 0", fontSize: 12, color: "#64748B" }}>
+                تجربة تطبيق أصيل كاملة الميزات بدون شريط المتصفح
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            style={{ background: "#F1F5F9", border: "none", color: "#64748B", cursor: "pointer", borderRadius: 8, padding: 6, display: "flex" }}
+          >
+            <IconX size={18} />
+          </button>
+        </div>
+
+        {isInstalled ? (
+          <div style={{ background: "#ECFDF5", border: "1px solid #A7F3D0", borderRadius: 14, padding: "16px", textAlign: "center", color: "#065F46", margin: "16px 0" }}>
+            <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 4 }}>✓ التطبيق مثبت بالفعل على جهازك!</div>
+            <div style={{ fontSize: 12 }}>يمكنك فتحه من الشاشة الرئيسية في أي وقت لتجربة سريعة وسلسة.</div>
+          </div>
+        ) : (
+          <>
+            {hasDirectPrompt ? (
+              <div style={{ margin: "14px 0" }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onDirectInstall();
+                    onClose();
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "13px 18px",
+                    borderRadius: 14,
+                    background: "linear-gradient(135deg, #D4AF37 0%, #C59B27 100%)",
+                    border: "none",
+                    color: "#1A1300",
+                    fontSize: 15,
+                    fontWeight: 800,
+                    cursor: "pointer",
+                    boxShadow: "0 4px 14px rgba(212, 175, 55, 0.35)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                  }}
+                >
+                  <IconSmartphone size={18} color="#1A1300" />
+                  <span>تثبيت التطبيق الآن بنقرة واحدة</span>
+                </button>
+              </div>
+            ) : null}
+
+            <div style={{ display: "flex", gap: 8, margin: "16px 0 12px" }}>
+              <button
+                type="button"
+                onClick={() => setPlatform("ios")}
+                style={{
+                  flex: 1,
+                  padding: "9px 12px",
+                  borderRadius: 10,
+                  fontSize: 13,
+                  fontWeight: 800,
+                  border: platform === "ios" ? "2px solid #D4AF37" : "1px solid #E2E8F0",
+                  background: platform === "ios" ? "#FEF9C3" : "#FFFFFF",
+                  color: platform === "ios" ? "#854D0E" : "#64748B",
+                  cursor: "pointer",
+                }}
+              >
+                آيفون وآيباد (iOS Safari)
+              </button>
+              <button
+                type="button"
+                onClick={() => setPlatform("android")}
+                style={{
+                  flex: 1,
+                  padding: "9px 12px",
+                  borderRadius: 10,
+                  fontSize: 13,
+                  fontWeight: 800,
+                  border: platform === "android" ? "2px solid #D4AF37" : "1px solid #E2E8F0",
+                  background: platform === "android" ? "#FEF9C3" : "#FFFFFF",
+                  color: platform === "android" ? "#854D0E" : "#64748B",
+                  cursor: "pointer",
+                }}
+              >
+                أندرويد والكمبيوتر (Chrome)
+              </button>
+            </div>
+
+            {platform === "ios" ? (
+              <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 14, padding: "16px" }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#1E293B", marginBottom: 12 }}>
+                  خطوات التثبيت على نظام iOS (سفاري):
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 12, color: "#475569" }}>
+                  <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                    <span style={{ width: 22, height: 22, borderRadius: "50%", background: "#FEF08A", color: "#854D0E", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 800, flexShrink: 0 }}>1</span>
+                    <span>اضغط على أيقونة المشاركة <strong>Share (⎋)</strong> في أسفل شاشة Safari.</span>
+                  </div>
+                  <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                    <span style={{ width: 22, height: 22, borderRadius: "50%", background: "#FEF08A", color: "#854D0E", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 800, flexShrink: 0 }}>2</span>
+                    <span>مرر للأسفل واضغط على <strong>إضافة إلى الشاشة الرئيسية (Add to Home Screen ⊞)</strong>.</span>
+                  </div>
+                  <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                    <span style={{ width: 22, height: 22, borderRadius: "50%", background: "#FEF08A", color: "#854D0E", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 800, flexShrink: 0 }}>3</span>
+                    <span>اضغط <strong>إضافة (Add)</strong> في أعلى الزاوية ليظهر التطبيق في شاشتك الرئيسية فوراً.</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 14, padding: "16px" }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#1E293B", marginBottom: 12 }}>
+                  خطوات التثبيت على أندرويد وكروم:
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 12, color: "#475569" }}>
+                  <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                    <span style={{ width: 22, height: 22, borderRadius: "50%", background: "#FEF08A", color: "#854D0E", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 800, flexShrink: 0 }}>1</span>
+                    <span>اضغط على قائمة الثلاث نقاط <strong>(⋮)</strong> في أعلى أو أسفل المتصفح.</span>
+                  </div>
+                  <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                    <span style={{ width: 22, height: 22, borderRadius: "50%", background: "#FEF08A", color: "#854D0E", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 800, flexShrink: 0 }}>2</span>
+                    <span>اختر <strong>تثبيت التطبيق (Install App)</strong> أو <strong>الإضافة للشاشة الرئيسية</strong>.</span>
+                  </div>
+                  <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                    <span style={{ width: 22, height: 22, borderRadius: "50%", background: "#FEF08A", color: "#854D0E", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 800, flexShrink: 0 }}>3</span>
+                    <span>أكّد التثبيت ليعمل التطبيق بشاشة كاملة وسرعة فائقة بدون اتصال متصفح.</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        <div style={{ marginTop: 18, textAlign: "center" }}>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              padding: "9px 24px",
+              borderRadius: 10,
+              background: "#F1F5F9",
+              border: "1px solid #CBD5E1",
+              color: "#475569",
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            إغلاق
+          </button>
         </div>
       </div>
     </div>
