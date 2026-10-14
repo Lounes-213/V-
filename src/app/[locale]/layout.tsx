@@ -90,20 +90,25 @@ export default async function LocaleLayout({
         <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
         <link
           rel="preload"
-          href="/fonts/inter-latin.woff2"
+          href="/fonts/cairo-arabic.woff2"
           as="font"
           type="font/woff2"
           crossOrigin="anonymous"
         />
-        {locale === "ar" ? (
-          <link
-            rel="preload"
-            href="/fonts/cairo-arabic.woff2"
-            as="font"
-            type="font/woff2"
-            crossOrigin="anonymous"
-          />
-        ) : null}
+        <link
+          rel="preload"
+          href="/fonts/amiri-quran-arabic.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
+        <link
+          rel="preload"
+          href="/fonts/cairo-latin.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
       </head>
       <body className="bg-ink text-fg min-h-dvh antialiased">
         <script

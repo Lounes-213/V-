@@ -201,9 +201,9 @@
   --color-focus: var(--focus);
 
   /* typography */
-  --font-sans: "Inter", "Cairo", ui-sans-serif, system-ui, sans-serif;
-  --font-arabic: "Inter", "Cairo", ui-sans-serif, sans-serif;
-  --font-quran: "Amiri Quran", "Cairo", serif;
+  --font-sans: "Cairo", "Amiri", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-arabic: "Cairo", "Amiri", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-quran: "Amiri Quran", "Amiri", "Cairo", serif;
   --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* fluid type scale — clamp() so mobile and wide both feel intentional */
@@ -328,13 +328,21 @@
     min-height: 100dvh;
     background-color: var(--ink);
     color: var(--fg);
-    font-family: var(--font-sans);
+    font-family: var(--font-arabic), var(--font-sans);
     font-size: var(--text-base);
-    line-height: 1.65;
+    line-height: 1.7;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     font-synthesis-weight: none;
     text-rendering: optimizeLegibility;
+  }
+
+  input,
+  button,
+  textarea,
+  select,
+  optgroup {
+    font-family: var(--font-arabic), var(--font-sans);
   }
 
   /* Arabic UI gets Cairo, but Latin words inside it keep Inter's colour+rhythm */

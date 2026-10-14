@@ -5450,7 +5450,7 @@ function drawTranslation(
   text: string,
 ) {
   ctx.save();
-  ctx.font = "400 28px 'Inter', sans-serif";
+  ctx.font = "400 28px 'Cairo', sans-serif";
   ctx.direction = "ltr";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
