@@ -662,6 +662,7 @@ export default function QuranVideoPage() {
 
   const previewAudioRef = React.useRef<HTMLAudioElement | null>(null);
   const previewCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
+  const mobilePreviewCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const exportCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const animFrameRef = React.useRef<number | null>(null);
 
@@ -674,7 +675,7 @@ export default function QuranVideoPage() {
   const customVideoElRef = React.useRef<HTMLVideoElement | null>(null);
   const uploadedVideoElRef = React.useRef<HTMLVideoElement | null>(null);
 
-  /* Pre-load background images */
+  /* Pre-load background images & fonts */
   React.useEffect(() => {
     const img1 = new Image();
     img1.src = "/backgrounds/mosque-night.jpg";
@@ -683,6 +684,12 @@ export default function QuranVideoPage() {
     const img2 = new Image();
     img2.src = "/backgrounds/golden-emerald.jpg";
     img2.onload = () => { goldenImgRef.current = img2; };
+
+    if (typeof document !== "undefined" && document.fonts) {
+      document.fonts.load("400 48px 'Amiri Quran'").catch(() => undefined);
+      document.fonts.load("700 48px 'Amiri'").catch(() => undefined);
+      document.fonts.load("700 48px 'Cairo'").catch(() => undefined);
+    }
   }, []);
 
   /* Cleanup URLs and timers */
@@ -963,6 +970,7 @@ export default function QuranVideoPage() {
     fromAyahNum: number,
     toAyahNum: number,
     targetRiwayah?: Riwayah,
+    overrideReciterId?: number,
   ) => {
     setError(null);
     setStage("processing");
@@ -998,7 +1006,7 @@ export default function QuranVideoPage() {
 
       // The range's own audio, stitched from the reciter — unless the creator is
       // working from their own recording, which stays the source of truth.
-      const reciterId = typeof customization.selectedAudioSource === "number" ? customization.selectedAudioSource : RECITERS[0]!.id;
+      const reciterId = overrideReciterId ?? (typeof customization.selectedAudioSource === "number" ? customization.selectedAudioSource : RECITERS[0]!.id);
       const ownRecording = originalAudioBlob ?? null;
       const rangeTrack = ownRecording ? null : await buildReciterTrack(surahNum, fromAyahNum, toAyahNum, reciterId);
       if (rangeTrack) {
@@ -1261,15 +1269,15 @@ export default function QuranVideoPage() {
     };
   }, [activeAudioUrl]);
 
-  // Synchronous Canvas Animation Loop for Preview
+  // Synchronous Canvas Animation Loop for Preview (Both Desktop & Mobile Canvases)
   React.useEffect(() => {
     if (!result || !syncedData) return;
 
     let animId: number;
     const render = () => {
-      const canvas = previewCanvasRef.current;
-      if (canvas) {
-        const time = previewAudioRef.current ? previewAudioRef.current.currentTime : currentTime;
+      const time = previewAudioRef.current ? previewAudioRef.current.currentTime : currentTime;
+      const drawTo = (canvas: HTMLCanvasElement | null) => {
+        if (!canvas) return;
         drawQuranCanvasFrame(
           canvas,
           time,
@@ -1285,14 +1293,18 @@ export default function QuranVideoPage() {
             uploadedVideo: uploadedVideoElRef.current,
           },
           false,
+          isPlaying,
         );
-      }
+      };
+
+      drawTo(previewCanvasRef.current);
+      drawTo(mobilePreviewCanvasRef.current);
       animId = requestAnimationFrame(render);
     };
 
     animId = requestAnimationFrame(render);
     return () => cancelAnimationFrame(animId);
-  }, [result, syncedData, customization, currentTime]);
+  }, [result, syncedData, customization, currentTime, isPlaying]);
 
   const togglePlayPreview = () => {
     const audio = previewAudioRef.current;
@@ -1338,9 +1350,9 @@ export default function QuranVideoPage() {
   /* ------------------------------------------- INTERACTIVE CADRE DRAGGING */
 
   const handleCanvasPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    const canvas = previewCanvasRef.current;
+    const canvas = e.currentTarget;
     if (!canvas) return;
-    canvas.setPointerCapture(e.pointerId);
+    try { canvas.setPointerCapture(e.pointerId); } catch {}
     setIsDraggingCadre(true);
     const rect = canvas.getBoundingClientRect();
     const ratio = (e.clientY - rect.top) / rect.height;
@@ -1350,7 +1362,7 @@ export default function QuranVideoPage() {
 
   const handleCanvasPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!isDraggingCadre) return;
-    const canvas = previewCanvasRef.current;
+    const canvas = e.currentTarget;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
     const ratio = (e.clientY - rect.top) / rect.height;
@@ -1362,7 +1374,7 @@ export default function QuranVideoPage() {
     if (isDraggingCadre) {
       setIsDraggingCadre(false);
       try {
-        previewCanvasRef.current?.releasePointerCapture(e.pointerId);
+        e.currentTarget?.releasePointerCapture(e.pointerId);
       } catch {}
     }
   };
@@ -1463,6 +1475,7 @@ export default function QuranVideoPage() {
               uploadedVideo: uploadedVideoElRef.current,
             },
             true,
+            true,
           );
 
           requestAnimationFrame(renderLoop);
@@ -1517,45 +1530,6 @@ export default function QuranVideoPage() {
       case "quran":
         return (
           <div style={{ display: "flex", flexDirection: "column", gap: 16, direction: "rtl" }}>
-            {/* Riwayah Selector */}
-            <div>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#854D0E", marginBottom: 8 }}>
-                رواية المصحف الشريف:
-              </label>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                {[
-                  { id: "hafs", title: "رواية حفص عن عاصم", desc: "المصحف الشريف بالرسم العثماني المعتمد" },
-                  { id: "warsh", title: "رواية ورش عن نافع", desc: "المصحف الشريف برسم ورش العثماني" },
-                ].map((r) => {
-                  const isSelected = customization.riwayah === r.id;
-                  return (
-                    <button
-                      key={r.id}
-                      type="button"
-                      onClick={() => handleRiwayahChange(r.id as Riwayah)}
-                      style={{
-                        padding: "12px 14px",
-                        borderRadius: 12,
-                        textAlign: "right",
-                        cursor: "pointer",
-                        border: isSelected ? "2px solid #D4AF37" : "1px solid #E2E8F0",
-                        background: isSelected ? "linear-gradient(135deg, #FEFDF9 0%, #FFF9EB 100%)" : "#FFFFFF",
-                        color: "#0F172A",
-                        transition: "all 0.15s ease",
-                      }}
-                    >
-                      <div style={{ fontWeight: 700, fontSize: 13, color: isSelected ? "#854D0E" : "#0F172A" }}>
-                        {r.title}
-                      </div>
-                      <div style={{ fontSize: 11, color: "#64748B", marginTop: 4, lineHeight: 1.4 }}>
-                        {r.desc}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
             {/* Sacred Quran Read-only Text View */}
             {result && (
               <div>
@@ -2221,22 +2195,25 @@ export default function QuranVideoPage() {
           <button
             type="button"
             onClick={() => handleRiwayahChange(customization.riwayah === "hafs" ? "warsh" : "hafs")}
-            title="انقر للتبديل بين حفص وورش"
+            title="انقر هنا للتبديل الفوري بين ورش وحفص"
             style={{
-              ...ghostBtn,
-              padding: "5px 12px",
+              padding: "6px 14px",
               fontSize: 12,
-              fontWeight: 700,
-              background: "#FFFBEB",
-              border: "1px solid #FDE68A",
-              color: "#92400E",
+              fontWeight: 800,
+              background: "linear-gradient(135deg, #FEF9C3 0%, #FEF08A 100%)",
+              border: "1.5px solid #F59E0B",
+              borderRadius: 10,
+              color: "#854D0E",
               display: "flex",
               alignItems: "center",
               gap: 6,
+              cursor: "pointer",
+              boxShadow: "0 2px 6px rgba(245, 158, 11, 0.15)",
+              transition: "all 0.15s ease",
             }}
           >
             <span>{customization.riwayah === "warsh" ? "رواية ورش عن نافع" : "رواية حفص عن عاصم"}</span>
-            <span style={{ fontSize: 10, color: "#B45309" }}>⇄</span>
+            <span style={{ fontSize: 11, color: "#B45309", fontWeight: 900 }}>⇄ تبديل</span>
           </button>
 
           {stage !== "idle" && (
@@ -2472,21 +2449,21 @@ export default function QuranVideoPage() {
 
         {/* ================= ONBOARDING / SETUP STAGE ================= */}
         {(stage === "idle" || stage === "recording" || stage === "processing") && (
-          <div style={{ maxWidth: 880, width: "100%", margin: "0 auto", display: "flex", flexDirection: "column", gap: 20 }}>
+          <div style={{ maxWidth: 840, width: "100%", margin: "0 auto", display: "flex", flexDirection: "column", gap: 12 }}>
             {/* Onboarding Header & App Definition */}
-            <div style={{ textAlign: "center", padding: "12px 0 6px" }}>
+            <div style={{ textAlign: "center", padding: "6px 0 2px" }}>
               <span style={goldBadge}>
                 ✦ رِوَايَة | استوديو إنتاج مقاطع القرآن الكريم
               </span>
-              <h2 style={{ fontSize: "clamp(22px, 4vw, 32px)", fontWeight: 900, color: "#0F172A", margin: "14px 0 8px" }}>
+              <h2 style={{ fontSize: "clamp(20px, 3.5vw, 26px)", fontWeight: 900, color: "#0F172A", margin: "8px 0 4px" }}>
                 صمّم مقاطع قرآنية متحركة كلمة بكلمة
               </h2>
-              <p style={{ color: "#64748B", fontSize: 14, margin: 0, maxWidth: 640, marginInline: "auto", lineHeight: 1.6 }}>
-                تطبيق احترافي متكامل لتحويل التلاوات إلى فيديوهات بصرية سينمائية متحركة بالرسم العثماني الشريف بروايتي <strong>ورش عن نافع</strong> و <strong>حفص عن عاصم</strong>، مع مزامنة ذكية وخلفيات وخطوط عربية راقية.
+              <p style={{ color: "#64748B", fontSize: 13, margin: 0, maxWidth: 580, marginInline: "auto", lineHeight: 1.5 }}>
+                تطبيق احترافي لتحويل التلاوات إلى فيديوهات سينمائية متحركة بالرسم العثماني الشريف، مع مزامنة ذكية وخلفيات وخطوط راقية.
               </p>
             </div>
 
-            <Card>
+            <Card style={{ padding: "16px 18px" }}>
               {/* Top Segmented Mode Selector */}
               <div
                 style={{
@@ -2494,28 +2471,28 @@ export default function QuranVideoPage() {
                   gridTemplateColumns: "1fr 1fr",
                   gap: 8,
                   background: "#F1F5F9",
-                  padding: 5,
-                  borderRadius: 14,
-                  marginBottom: 24,
+                  padding: 4,
+                  borderRadius: 12,
+                  marginBottom: 16,
                 }}
               >
                 <button
                   type="button"
                   onClick={() => setEntryMode("upload")}
                   style={{
-                    padding: "12px 14px",
+                    padding: "10px 12px",
                     borderRadius: 10,
                     border: "none",
                     cursor: "pointer",
                     fontWeight: 800,
-                    fontSize: 14,
+                    fontSize: 13,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    gap: 8,
+                    gap: 6,
                     background: entryMode === "upload" ? "#FFFFFF" : "transparent",
                     color: entryMode === "upload" ? "#854D0E" : "#64748B",
-                    boxShadow: entryMode === "upload" ? "0 2px 8px rgba(0,0,0,0.06)" : "none",
+                    boxShadow: entryMode === "upload" ? "0 2px 6px rgba(0,0,0,0.06)" : "none",
                     transition: "all 0.15s ease",
                   }}
                 >
@@ -2527,19 +2504,19 @@ export default function QuranVideoPage() {
                   type="button"
                   onClick={() => setEntryMode("preselected")}
                   style={{
-                    padding: "12px 14px",
+                    padding: "10px 12px",
                     borderRadius: 10,
                     border: "none",
                     cursor: "pointer",
                     fontWeight: 800,
-                    fontSize: 14,
+                    fontSize: 13,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    gap: 8,
+                    gap: 6,
                     background: entryMode === "preselected" ? "#FFFFFF" : "transparent",
                     color: entryMode === "preselected" ? "#854D0E" : "#64748B",
-                    boxShadow: entryMode === "preselected" ? "0 2px 8px rgba(0,0,0,0.06)" : "none",
+                    boxShadow: entryMode === "preselected" ? "0 2px 6px rgba(0,0,0,0.06)" : "none",
                     transition: "all 0.15s ease",
                   }}
                 >
@@ -2551,75 +2528,8 @@ export default function QuranVideoPage() {
               {/* ------------------------------------------------ MODE 1: UPLOAD CUSTOM MEDIA */}
               {entryMode === "upload" && (
                 <div>
-                  {/* Step A: Riwayah selection */}
-                  <div style={{ marginBottom: 22, borderBottom: "1px solid #F1F5F9", paddingBottom: 20 }}>
-                    <label style={{ display: "block", fontSize: 13, fontWeight: 800, color: "#854D0E", marginBottom: 10 }}>
-                      ١. الرواية الشريفة المعتمدة للمقطع:
-                    </label>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                      {[
-                        {
-                          id: "warsh" as Riwayah,
-                          title: "رواية ورش عن نافع",
-                          desc: "مصحف ورش برسمه العثماني الأصيل (بدون همزات على يُومِنُونَ، ونقل الهمز ومَلِكِ يَوْمِ الدِّينِ)",
-                          badge: "قراءة أهل الجزائر والمغرب",
-                        },
-                        {
-                          id: "hafs" as Riwayah,
-                          title: "رواية حفص عن عاصم",
-                          desc: "مصحف مجمع الملك فهد بالمدينة المنورة (مَـٰلِكِ يَوْمِ الدِّينِ، ويُؤْمِنُونَ)",
-                          badge: "الرسم الأكثر انتشاراً",
-                        },
-                      ].map((r) => {
-                        const isSelected = customization.riwayah === r.id;
-                        return (
-                          <button
-                            key={r.id}
-                            type="button"
-                            onClick={() => handleRiwayahChange(r.id)}
-                            style={{
-                              padding: "14px 16px",
-                              borderRadius: 12,
-                              border: isSelected ? "2px solid #D4AF37" : "1px solid #E2E8F0",
-                              background: isSelected ? "linear-gradient(135deg, #FEFDF9 0%, #FFF9EB 100%)" : "#FFFFFF",
-                              boxShadow: isSelected ? "0 6px 20px -4px rgba(212, 175, 55, 0.2)" : "0 1px 3px rgba(0,0,0,0.02)",
-                              textAlign: "right",
-                              cursor: "pointer",
-                              transition: "all 0.15s ease",
-                            }}
-                          >
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                              <span style={{ fontSize: 14, fontWeight: 800, color: isSelected ? "#854D0E" : "#0F172A" }}>
-                                {r.title}
-                              </span>
-                              <span
-                                style={{
-                                  fontSize: 10,
-                                  fontWeight: 700,
-                                  padding: "2px 7px",
-                                  borderRadius: 999,
-                                  background: isSelected ? "#D4AF37" : "#F1F5F9",
-                                  color: isSelected ? "#1A1300" : "#64748B",
-                                }}
-                              >
-                                {r.badge}
-                              </span>
-                            </div>
-                            <p style={{ fontSize: 11, color: "#64748B", margin: 0, lineHeight: 1.45 }}>
-                              {r.desc}
-                            </p>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Step B: Primary Upload Dropzone */}
-                  <div style={{ marginBottom: 18 }}>
-                    <label style={{ display: "block", fontSize: 13, fontWeight: 800, color: "#854D0E", marginBottom: 10 }}>
-                      ٢. رفع ملف الصوت أو الفيديو:
-                    </label>
-
+                  {/* Primary Upload Dropzone */}
+                  <div style={{ marginBottom: 14 }}>
                     <div
                       onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
                       onDragLeave={() => setIsDragging(false)}
@@ -2628,17 +2538,17 @@ export default function QuranVideoPage() {
                       style={{
                         border: isDragging ? "2px dashed #D4AF37" : "2px dashed #CBD5E1",
                         borderRadius: 16,
-                        padding: "36px 20px",
+                        padding: "26px 16px",
                         background: isDragging ? "#FEFDF7" : "#F8FAFC",
                         textAlign: "center",
                         cursor: "pointer",
                         transition: "all 0.15s ease",
                       }}
                     >
-                      <div style={{ width: 54, height: 54, borderRadius: "50%", background: "#FEF9C3", color: "#854D0E", margin: "0 auto 12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <IconUpload size={24} color="#854D0E" />
+                      <div style={{ width: 48, height: 48, borderRadius: "50%", background: "#FEF9C3", color: "#854D0E", margin: "0 auto 10px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <IconUpload size={22} color="#854D0E" />
                       </div>
-                      <div style={{ fontSize: 16, fontWeight: 800, color: "#0F172A", marginBottom: 6 }}>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: "#0F172A", marginBottom: 4 }}>
                         انقر لاختيار مقطع صوتي أو فيديو، أو اسحبه وأفلته هنا
                       </div>
                       <div style={{ fontSize: 12, color: "#64748B", maxWidth: 460, margin: "0 auto" }}>
@@ -2832,74 +2742,11 @@ export default function QuranVideoPage() {
               {/* ------------------------------------------------ MODE 2: PRESELECTED AYAH & RECITER */}
               {entryMode === "preselected" && (
                 <div>
-                  {/* Step A: Riwayah selection */}
-                  <div style={{ marginBottom: 22, borderBottom: "1px solid #F1F5F9", paddingBottom: 20 }}>
-                    <label style={{ display: "block", fontSize: 13, fontWeight: 800, color: "#854D0E", marginBottom: 10 }}>
-                      ١. الرواية الشريفة المعتمدة:
-                    </label>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                      {[
-                        {
-                          id: "warsh" as Riwayah,
-                          title: "رواية ورش عن نافع",
-                          desc: "مصحف ورش برسمه العثماني الأصيل (بدون همزات على يُومِنُونَ، ونقل الهمز ومَلِكِ يَوْمِ الدِّينِ)",
-                          badge: "قراءة أهل الجزائر والمغرب",
-                        },
-                        {
-                          id: "hafs" as Riwayah,
-                          title: "رواية حفص عن عاصم",
-                          desc: "مصحف مجمع الملك فهد بالمدينة المنورة (مَـٰلِكِ يَوْمِ الدِّينِ، ويُؤْمِنُونَ)",
-                          badge: "الرسم الأكثر انتشاراً",
-                        },
-                      ].map((r) => {
-                        const isSelected = customization.riwayah === r.id;
-                        return (
-                          <button
-                            key={r.id}
-                            type="button"
-                            onClick={() => handleRiwayahChange(r.id)}
-                            style={{
-                              padding: "14px 16px",
-                              borderRadius: 12,
-                              border: isSelected ? "2px solid #D4AF37" : "1px solid #E2E8F0",
-                              background: isSelected ? "linear-gradient(135deg, #FEFDF9 0%, #FFF9EB 100%)" : "#FFFFFF",
-                              boxShadow: isSelected ? "0 6px 20px -4px rgba(212, 175, 55, 0.2)" : "0 1px 3px rgba(0,0,0,0.02)",
-                              textAlign: "right",
-                              cursor: "pointer",
-                              transition: "all 0.15s ease",
-                            }}
-                          >
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                              <span style={{ fontSize: 14, fontWeight: 800, color: isSelected ? "#854D0E" : "#0F172A" }}>
-                                {r.title}
-                              </span>
-                              <span
-                                style={{
-                                  fontSize: 10,
-                                  fontWeight: 700,
-                                  padding: "2px 7px",
-                                  borderRadius: 999,
-                                  background: isSelected ? "#D4AF37" : "#F1F5F9",
-                                  color: isSelected ? "#1A1300" : "#64748B",
-                                }}
-                              >
-                                {r.badge}
-                              </span>
-                            </div>
-                            <p style={{ fontSize: 11, color: "#64748B", margin: 0, lineHeight: 1.45 }}>
-                              {r.desc}
-                            </p>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Step B: Ayah selection */}
-                  <div style={{ marginBottom: 22, borderBottom: "1px solid #F1F5F9", paddingBottom: 20 }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                  {/* Ayah selection */}
+                  <div style={{ marginBottom: 16, borderBottom: "1px solid #F1F5F9", paddingBottom: 16 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                       <label style={{ fontSize: 13, fontWeight: 800, color: "#854D0E" }}>
-                        ٢. تحديد السورة والآيات الكريمة:
+                        تحديد السورة والآيات الكريمة:
                       </label>
                       <button
                         type="button"
@@ -3062,7 +2909,7 @@ export default function QuranVideoPage() {
                     <button
                       onClick={() => {
                         setCustomization((c) => ({ ...c, selectedAudioSource: selectedReciterId }));
-                        loadCorrectedAyah(editSurah, editFromAyah, editToAyah, customization.riwayah);
+                        loadCorrectedAyah(editSurah, editFromAyah, editToAyah, customization.riwayah, selectedReciterId);
                       }}
                       style={{
                         ...primaryBtn,
@@ -3160,6 +3007,7 @@ export default function QuranVideoPage() {
                   {/* Canvas Frame — with pointer drag */}
                   <div
                     className="canvas-frame-container"
+                    onClick={togglePlayPreview}
                     style={{
                       position: "relative",
                       width: "100%",
@@ -3169,8 +3017,8 @@ export default function QuranVideoPage() {
                       borderRadius: 20,
                       overflow: "hidden",
                       boxShadow: "0 16px 40px rgba(15, 23, 42, 0.22), 0 0 0 1px rgba(212, 175, 55, 0.35)",
-                      background: "#05070D",
-                      cursor: isDraggingCadre ? "grabbing" : "grab",
+                      background: "#080E1A",
+                      cursor: isDraggingCadre ? "grabbing" : "pointer",
                     }}
                   >
                     <canvas
@@ -3189,37 +3037,31 @@ export default function QuranVideoPage() {
                       }}
                     />
 
-                    {/* Quick Play Overlay if paused */}
-                    {!isPlaying && (
-                      <div
-                        onClick={togglePlayPreview}
-                        style={{
-                          position: "absolute",
-                          inset: 0,
-                          background: "rgba(0,0,0,0.35)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          cursor: "pointer",
-                          backdropFilter: "blur(2px)",
-                        }}
-                      >
-                        <div
-                          style={{
-                            width: 60,
-                            height: 60,
-                            borderRadius: "50%",
-                            background: "linear-gradient(135deg, #D4AF37, #F5D77F)",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            boxShadow: "0 8px 24px rgba(212,175,55,0.4)",
-                          }}
-                        >
-                          <IconPlay size={26} color="#1A1300" />
-                        </div>
-                      </div>
-                    )}
+                    {/* Subtle corner badge for play status without obscuring ayahs */}
+                    <div
+                      style={{
+                        position: "absolute",
+                        bottom: 12,
+                        left: 12,
+                        zIndex: 5,
+                        background: "rgba(15, 23, 42, 0.8)",
+                        backdropFilter: "blur(6px)",
+                        border: "1px solid rgba(212, 175, 55, 0.5)",
+                        borderRadius: 999,
+                        padding: "5px 12px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        color: "#FEF08A",
+                        fontSize: 11,
+                        fontWeight: 700,
+                        pointerEvents: "none",
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+                      }}
+                    >
+                      {isPlaying ? <IconPause size={12} color="#FEF08A" /> : <IconPlay size={12} color="#FEF08A" />}
+                      <span>{isPlaying ? "إيقاف مؤقت" : "تشغيل"}</span>
+                    </div>
                   </div>
 
                   <div style={{ fontSize: 11, color: "#64748B", textAlign: "center", marginTop: 8, direction: "rtl" }}>
@@ -3400,6 +3242,7 @@ export default function QuranVideoPage() {
               <div className="quran-mobile-preview-box">
                 <div
                   className="canvas-frame-container"
+                  onClick={togglePlayPreview}
                   style={{
                     position: "relative",
                     width: "auto",
@@ -3408,12 +3251,12 @@ export default function QuranVideoPage() {
                     borderRadius: 16,
                     overflow: "hidden",
                     boxShadow: "0 8px 24px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(212, 175, 55, 0.4)",
-                    background: "#05070D",
-                    cursor: isDraggingCadre ? "grabbing" : "grab",
+                    background: "#080E1A",
+                    cursor: isDraggingCadre ? "grabbing" : "pointer",
                   }}
                 >
                   <canvas
-                    ref={previewCanvasRef}
+                    ref={mobilePreviewCanvasRef}
                     width={ASPECTS[customization.aspect].w}
                     height={ASPECTS[customization.aspect].h}
                     onPointerDown={handleCanvasPointerDown}
@@ -3428,35 +3271,31 @@ export default function QuranVideoPage() {
                     }}
                   />
 
-                  {/* Quick Play Overlay if paused */}
-                  {!isPlaying && (
-                    <div
-                      onClick={togglePlayPreview}
-                      style={{
-                        position: "absolute",
-                        inset: 0,
-                        background: "rgba(0,0,0,0.3)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        cursor: "pointer",
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: 48,
-                          height: 48,
-                          borderRadius: "50%",
-                          background: "linear-gradient(135deg, #D4AF37, #F5D77F)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        <IconPlay size={22} color="#1A1300" />
-                      </div>
-                    </div>
-                  )}
+                  {/* Subtle floating play/pause pill at bottom corner */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      bottom: 8,
+                      left: 8,
+                      zIndex: 5,
+                      background: "rgba(15, 23, 42, 0.8)",
+                      backdropFilter: "blur(6px)",
+                      border: "1px solid rgba(212, 175, 55, 0.5)",
+                      borderRadius: 999,
+                      padding: "4px 10px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 5,
+                      color: "#FEF08A",
+                      fontSize: 10,
+                      fontWeight: 700,
+                      pointerEvents: "none",
+                      boxShadow: "0 4px 10px rgba(0,0,0,0.3)",
+                    }}
+                  >
+                    {isPlaying ? <IconPause size={10} color="#FEF08A" /> : <IconPlay size={10} color="#FEF08A" />}
+                    <span>{isPlaying ? "إيقاف مؤقت" : "تشغيل"}</span>
+                  </div>
                 </div>
 
                 {/* Compact Player Scrubber Bar */}
@@ -3723,8 +3562,6 @@ export default function QuranVideoPage() {
 
       {/* Global Embedded Styles */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@400;600;700;800;900&display=swap');
-
         @keyframes pulse {
           0%, 100% { transform: scale(1); opacity: 1; }
           50% { transform: scale(1.15); opacity: 0.7; }
@@ -3756,9 +3593,8 @@ export default function QuranVideoPage() {
 
         @media (max-width: 860px) {
           .quran-standalone-app {
-            height: 100dvh !important;
-            max-height: 100dvh !important;
-            overflow: hidden !important;
+            min-height: 100dvh !important;
+            overflow-x: hidden !important;
           }
           .quran-desktop-workspace {
             display: none !important;
@@ -3839,6 +3675,7 @@ function drawQuranCanvasFrame(
     uploadedVideo: HTMLVideoElement | null;
   },
   isExport = false,
+  isPlaying = false,
 ) {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
@@ -3874,7 +3711,7 @@ function drawQuranCanvasFrame(
   // 4. Calculate Speech & Active Word with Madd (المد) persistence
   const words = syncedData.words;
   const speechRuns = syncedData.speechRuns;
-  const isInSpeech = isTimeInSpeech(time, speechRuns);
+  const isInSpeech = !isPlaying || isTimeInSpeech(time, speechRuns);
 
   let activeWordIdx = -1;
   for (let i = 0; i < words.length; i++) {
@@ -3911,7 +3748,7 @@ function drawQuranCanvasFrame(
 
   // 5. Render Bounding Box and Words with Y-position
   ctx.save();
-  renderWordsAndBox(ctx, W, H, words, activeWordIdx, isInSpeech, speechRuns, time, custom, result, isExport);
+  renderWordsAndBox(ctx, W, H, words, activeWordIdx, isInSpeech, speechRuns, time, custom, result, isExport, isPlaying);
   ctx.restore();
 
   // 6. Draw Live Waveform
@@ -3947,40 +3784,40 @@ function drawBackground(
 ) {
   if (custom.bgType === "uploaded_video" && assets.uploadedVideo && assets.uploadedVideo.readyState >= 2) {
     drawImageCover(ctx, assets.uploadedVideo, W, H);
-    drawVignette(ctx, W, H, 0.7);
+    drawVignette(ctx, W, H, 0.45);
     return;
   }
 
   if (custom.bgType === "custom_video" && assets.customVideo && assets.customVideo.readyState >= 2) {
     drawImageCover(ctx, assets.customVideo, W, H);
-    drawVignette(ctx, W, H, 0.7);
+    drawVignette(ctx, W, H, 0.45);
     return;
   }
 
   if (custom.bgType === "custom_image" && assets.customImg) {
     drawImageCover(ctx, assets.customImg, W, H);
-    drawVignette(ctx, W, H, 0.65);
+    drawVignette(ctx, W, H, 0.4);
     return;
   }
 
   if (custom.bgType === "preset_image") {
     if (custom.bgPreset === "mosque_night" && assets.mosqueImg) {
       drawImageCover(ctx, assets.mosqueImg, W, H);
-      drawVignette(ctx, W, H, 0.68);
+      drawVignette(ctx, W, H, 0.42);
       return;
     }
     if (custom.bgPreset === "golden_emerald" && assets.goldenImg) {
       drawImageCover(ctx, assets.goldenImg, W, H);
-      drawVignette(ctx, W, H, 0.65);
+      drawVignette(ctx, W, H, 0.4);
       return;
     }
   }
 
   if (custom.bgType === "stars" || custom.bgPreset === "space_stars") {
     const grad = ctx.createLinearGradient(0, 0, 0, H);
-    grad.addColorStop(0, "#050711");
-    grad.addColorStop(0.5, "#0A0E22");
-    grad.addColorStop(1, "#04060E");
+    grad.addColorStop(0, "#081024");
+    grad.addColorStop(0.5, "#121A3A");
+    grad.addColorStop(1, "#070E20");
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, W, H);
 
@@ -3993,7 +3830,7 @@ function drawBackground(
     }
 
     const radial = ctx.createRadialGradient(W / 2, H * 0.5, 0, W / 2, H * 0.5, W * 0.75);
-    radial.addColorStop(0, "rgba(43, 127, 255, 0.08)");
+    radial.addColorStop(0, "rgba(43, 127, 255, 0.12)");
     radial.addColorStop(1, "rgba(0, 0, 0, 0)");
     ctx.fillStyle = radial;
     ctx.fillRect(0, 0, W, H);
@@ -4006,29 +3843,30 @@ function drawBackground(
     grad.addColorStop(1, custom.customColor2);
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, W, H);
-    drawVignette(ctx, W, H, 0.4);
+    drawVignette(ctx, W, H, 0.35);
     return;
   }
 
   const grad = ctx.createLinearGradient(0, 0, 0, H);
   if (custom.bgPreset === "spiritual_emerald") {
-    grad.addColorStop(0, "#03150C");
-    grad.addColorStop(0.5, "#0A291A");
-    grad.addColorStop(1, "#03150C");
+    grad.addColorStop(0, "#02170E");
+    grad.addColorStop(0.5, "#0D3322");
+    grad.addColorStop(1, "#02170E");
   } else if (custom.bgPreset === "midnight_blue") {
-    grad.addColorStop(0, "#050D1C");
-    grad.addColorStop(0.5, "#0E2140");
-    grad.addColorStop(1, "#050D1C");
+    grad.addColorStop(0, "#061329");
+    grad.addColorStop(0.5, "#12284D");
+    grad.addColorStop(1, "#061329");
   } else {
-    grad.addColorStop(0, "#05070D");
-    grad.addColorStop(0.5, "#0D1322");
-    grad.addColorStop(1, "#05070D");
+    grad.addColorStop(0, "#08101E");
+    grad.addColorStop(0.5, "#111C32");
+    grad.addColorStop(1, "#08101E");
   }
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, W, H);
 
-  const radial = ctx.createRadialGradient(W / 2, H * 0.5, 0, W / 2, H * 0.5, W * 0.7);
-  radial.addColorStop(0, "rgba(43, 127, 255, 0.07)");
+  const radial = ctx.createRadialGradient(W / 2, H * 0.5, 0, W / 2, H * 0.5, W * 0.65);
+  radial.addColorStop(0, "rgba(212, 175, 55, 0.12)");
+  radial.addColorStop(0.5, "rgba(43, 127, 255, 0.08)");
   radial.addColorStop(1, "rgba(0, 0, 0, 0)");
   ctx.fillStyle = radial;
   ctx.fillRect(0, 0, W, H);
@@ -4054,10 +3892,10 @@ function drawImageCover(
 
 function drawVignette(ctx: CanvasRenderingContext2D, W: number, H: number, strength: number) {
   const grad = ctx.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0, `rgba(5, 7, 13, ${strength * 0.85})`);
-  grad.addColorStop(0.3, `rgba(5, 7, 13, ${strength * 0.5})`);
-  grad.addColorStop(0.7, `rgba(5, 7, 13, ${strength * 0.5})`);
-  grad.addColorStop(1, `rgba(5, 7, 13, ${strength * 0.95})`);
+  grad.addColorStop(0, `rgba(5, 7, 13, ${strength * 0.5})`);
+  grad.addColorStop(0.3, `rgba(5, 7, 13, ${strength * 0.25})`);
+  grad.addColorStop(0.7, `rgba(5, 7, 13, ${strength * 0.25})`);
+  grad.addColorStop(1, `rgba(5, 7, 13, ${strength * 0.65})`);
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, W, H);
 }
@@ -4152,6 +3990,7 @@ function renderWordsAndBox(
   custom: Customization,
   result?: DetectionResult,
   isExport = false,
+  isPlaying = false,
 ) {
   const centerY = H * (custom.wordPosY / 100);
   const fontSize = custom.fontSize;
@@ -4174,7 +4013,7 @@ function renderWordsAndBox(
   const boxY = centerY - boxH / 2;
 
   // Draw Bounding Box
-  if (custom.boxStyle !== "none" && (isInSpeech || !custom.hideOnSilence)) {
+  if (custom.boxStyle !== "none" && (isInSpeech || !custom.hideOnSilence || !isPlaying)) {
     ctx.save();
     if (custom.boxStyle === "glass") {
       ctx.fillStyle = `rgba(10, 15, 28, ${custom.boxOpacity})`;
@@ -4239,14 +4078,14 @@ function renderWordsAndBox(
     ctx.restore();
   }
 
-  // Silence Gating
-  if (custom.hideOnSilence && !isInSpeech) {
+  // Silence Gating (only during active playback)
+  if (isPlaying && custom.hideOnSilence && !isInSpeech) {
     ctx.save();
     ctx.direction = "rtl";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.font = `400 38px ${fontName}`;
-    ctx.fillStyle = "rgba(43, 127, 255, 0.3)";
+    ctx.fillStyle = "rgba(235, 185, 75, 0.4)";
     ctx.fillText("۞", W / 2, centerY);
     ctx.restore();
     return;
@@ -4285,10 +4124,10 @@ function renderWordsAndBox(
     let currentAlpha = 1.0;
     let currentShadowBlur = 38;
 
-    if (custom.wordAnimation === "typewriter") {
+    if (custom.wordAnimation === "typewriter" && isPlaying) {
       const charCount = Math.max(1, Math.ceil(progress * activeWord.text.length));
       textToDraw = activeWord.text.slice(0, charCount);
-    } else if (custom.wordAnimation === "pop_bounce") {
+    } else if (custom.wordAnimation === "pop_bounce" && isPlaying) {
       const spring = progress < 0.35
         ? 0.7 + 0.65 * (progress / 0.35)
         : 1.35 - 0.2 * ((progress - 0.35) / 0.65);
@@ -4304,7 +4143,7 @@ function renderWordsAndBox(
         ctx.stroke();
         ctx.restore();
       }
-    } else if (custom.wordAnimation === "shimmer_gold") {
+    } else if (custom.wordAnimation === "shimmer_gold" && isPlaying) {
       const shimmerOffset = (progress * 2 - 1) * 160;
       const grad = ctx.createLinearGradient(W / 2 + shimmerOffset - 100, centerY, W / 2 + shimmerOffset + 100, centerY);
       grad.addColorStop(0, "#FFE97A");
@@ -4312,19 +4151,19 @@ function renderWordsAndBox(
       grad.addColorStop(1, "#FFE97A");
       ctx.fillStyle = grad;
       currentShadowBlur = 36 + 22 * Math.sin(progress * Math.PI);
-    } else if (custom.wordAnimation === "flip_reveal") {
+    } else if (custom.wordAnimation === "flip_reveal" && isPlaying) {
       const flipPhase = Math.min(1, progress * 1.6);
       const scaleY = flipPhase < 0.5 ? 1 - flipPhase * 2 : (flipPhase - 0.5) * 2;
       ctx.translate(W / 2, centerY);
       ctx.scale(1, Math.max(0.08, scaleY));
       ctx.translate(-W / 2, -centerY);
       currentShadowBlur = 42;
-    } else if (custom.wordAnimation === "glow_pulse") {
+    } else if (custom.wordAnimation === "glow_pulse" && isPlaying) {
       currentShadowBlur = 24 + 36 * Math.sin(progress * Math.PI);
-    } else if (custom.wordAnimation === "fade_slide_up") {
+    } else if (custom.wordAnimation === "fade_slide_up" && isPlaying) {
       currentOffsetY = (1 - Math.min(1, progress * 2.2)) * 26;
       currentAlpha = Math.min(1, progress * 2.8);
-    } else if (custom.wordAnimation === "cinematic_zoom") {
+    } else if (custom.wordAnimation === "cinematic_zoom" && isPlaying) {
       currentScale *= (0.92 + 0.16 * progress);
     }
 
@@ -4332,13 +4171,13 @@ function renderWordsAndBox(
     ctx.font = `700 ${fontSize * currentScale}px ${fontName}`;
     ctx.shadowColor = glowColor;
     ctx.shadowBlur = currentShadowBlur;
-    if (custom.wordAnimation !== "shimmer_gold") {
+    if (custom.wordAnimation !== "shimmer_gold" || !isPlaying) {
       ctx.fillStyle = "#FFE97A";
     }
     ctx.fillText(textToDraw, W / 2, centerY + currentOffsetY);
 
     // Cursor for typewriter
-    if (custom.wordAnimation === "typewriter" && progress < 0.98 && custom.cursorStyle !== "none") {
+    if (isPlaying && custom.wordAnimation === "typewriter" && progress < 0.98 && custom.cursorStyle !== "none") {
       const typedWidth = ctx.measureText(textToDraw).width;
       const cursorX = W / 2 - typedWidth / 2 - 10;
       const cursorY = centerY + currentOffsetY;
@@ -4381,15 +4220,19 @@ function renderWordsAndBox(
 
     if (activeIdx > 0 && words[activeIdx - 1]) {
       ctx.save();
-      ctx.font = `400 ${fontSize * 0.44}px ${fontName}`;
-      ctx.fillStyle = "rgba(230, 220, 200, 0.35)";
+      ctx.font = `400 ${fontSize * 0.48}px ${fontName}`;
+      ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
+      ctx.shadowColor = "rgba(0,0,0,0.85)";
+      ctx.shadowBlur = 8;
       ctx.fillText(words[activeIdx - 1]!.text, W / 2 + wordWidth / 2 + 120, centerY);
       ctx.restore();
     }
     if (activeIdx < words.length - 1 && words[activeIdx + 1]) {
       ctx.save();
-      ctx.font = `400 ${fontSize * 0.44}px ${fontName}`;
-      ctx.fillStyle = "rgba(230, 220, 200, 0.35)";
+      ctx.font = `400 ${fontSize * 0.48}px ${fontName}`;
+      ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
+      ctx.shadowColor = "rgba(0,0,0,0.85)";
+      ctx.shadowBlur = 8;
       ctx.fillText(words[activeIdx + 1]!.text, W / 2 - wordWidth / 2 - 120, centerY);
       ctx.restore();
     }
@@ -4432,7 +4275,7 @@ function renderWordsAndBox(
     let currentAlpha = 1.0;
     let currentShadowBlur = 34;
 
-    if (custom.wordAnimation === "typewriter") {
+    if (custom.wordAnimation === "typewriter" && isPlaying) {
       if (activeIdx === pairStartIdx) {
         const charCount = Math.max(1, Math.ceil(progress * w1.text.length));
         textToDraw = w1.text.slice(0, charCount);
@@ -4440,13 +4283,13 @@ function renderWordsAndBox(
         const charCount = Math.max(1, Math.ceil(progress * w2.text.length));
         textToDraw = `${w1.text} ${w2.text.slice(0, charCount)}`;
       }
-    } else if (custom.wordAnimation === "pop_bounce") {
+    } else if (custom.wordAnimation === "pop_bounce" && isPlaying) {
       const spring = progress < 0.35
         ? 0.8 + 0.45 * (progress / 0.35)
         : 1.25 - 0.2 * ((progress - 0.35) / 0.65);
       currentScale *= spring;
       currentShadowBlur = 44;
-    } else if (custom.wordAnimation === "shimmer_gold") {
+    } else if (custom.wordAnimation === "shimmer_gold" && isPlaying) {
       const shimmerOffset = (progress * 2 - 1) * 160;
       const grad = ctx.createLinearGradient(W / 2 + shimmerOffset - 100, centerY, W / 2 + shimmerOffset + 100, centerY);
       grad.addColorStop(0, "#FFE97A");
@@ -4454,19 +4297,19 @@ function renderWordsAndBox(
       grad.addColorStop(1, "#FFE97A");
       ctx.fillStyle = grad;
       currentShadowBlur = 36 + 22 * Math.sin(progress * Math.PI);
-    } else if (custom.wordAnimation === "flip_reveal") {
+    } else if (custom.wordAnimation === "flip_reveal" && isPlaying) {
       const flipPhase = Math.min(1, progress * 1.6);
       const scaleY = flipPhase < 0.5 ? 1 - flipPhase * 2 : (flipPhase - 0.5) * 2;
       ctx.translate(W / 2, centerY);
       ctx.scale(1, Math.max(0.08, scaleY));
       ctx.translate(-W / 2, -centerY);
       currentShadowBlur = 40;
-    } else if (custom.wordAnimation === "glow_pulse") {
+    } else if (custom.wordAnimation === "glow_pulse" && isPlaying) {
       currentShadowBlur = 20 + 32 * Math.sin(progress * Math.PI);
-    } else if (custom.wordAnimation === "fade_slide_up") {
+    } else if (custom.wordAnimation === "fade_slide_up" && isPlaying) {
       currentOffsetY = (1 - Math.min(1, progress * 2.2)) * 22;
       currentAlpha = Math.min(1, progress * 2.8);
-    } else if (custom.wordAnimation === "cinematic_zoom") {
+    } else if (custom.wordAnimation === "cinematic_zoom" && isPlaying) {
       currentScale *= (0.94 + 0.12 * progress);
     }
 
@@ -4474,12 +4317,12 @@ function renderWordsAndBox(
     ctx.font = `700 ${fontSize * currentScale}px ${fontName}`;
     ctx.shadowColor = glowColor;
     ctx.shadowBlur = currentShadowBlur;
-    if (custom.wordAnimation !== "shimmer_gold") {
+    if (custom.wordAnimation !== "shimmer_gold" || !isPlaying) {
       ctx.fillStyle = "#FFE97A";
     }
     ctx.fillText(textToDraw, W / 2, centerY + currentOffsetY);
 
-    if (custom.wordAnimation === "typewriter" && progress < 0.98 && custom.cursorStyle !== "none") {
+    if (isPlaying && custom.wordAnimation === "typewriter" && progress < 0.98 && custom.cursorStyle !== "none") {
       const typedWidth = ctx.measureText(textToDraw).width;
       const curX = W / 2 - typedWidth / 2 - 8;
       ctx.beginPath();
@@ -4549,6 +4392,7 @@ function renderWordsAndBox(
       time,
       custom,
       result,
+      isPlaying,
     );
     return;
   }
@@ -4587,6 +4431,7 @@ function renderWordsAndBox(
     time,
     custom,
     result,
+    isPlaying,
   );
 }
 
@@ -4604,6 +4449,7 @@ function renderTextLinesCentered(
   time: number,
   custom: Customization,
   _result?: DetectionResult,
+  isPlaying = false,
 ) {
   const fontName =
     custom.fontFamily === "cairo"
@@ -4657,7 +4503,7 @@ function renderTextLinesCentered(
     for (let wi = 0; wi < line.length; wi++) {
       const item = line[wi]!;
       const itemW = widths[wi]!;
-      const isActive = item.wordIdx === activeIdx && isInSpeech;
+      const isActive = isPlaying ? (item.wordIdx === activeIdx && isInSpeech) : (item.wordIdx === activeIdx);
 
       ctx.save();
       ctx.textAlign = "right";
@@ -4668,7 +4514,7 @@ function renderTextLinesCentered(
         const progress = Math.min(1, (wordElapsed / wordDuration) * speedMult);
 
         let textToDraw = item.text;
-        if (custom.wordAnimation === "typewriter") {
+        if (custom.wordAnimation === "typewriter" && isPlaying) {
           const charCount = Math.max(1, Math.ceil(progress * item.text.length));
           textToDraw = item.text.slice(0, charCount);
         }
@@ -4677,41 +4523,43 @@ function renderTextLinesCentered(
         let slideY = lineY;
         let blur = 34;
 
-        if (custom.wordAnimation === "pop_bounce") {
-          const spring = progress < 0.35 ? 0.85 + 0.4 * (progress / 0.35) : 1.25 - 0.17 * ((progress - 0.35) / 0.65);
-          scale = 1.0 * spring;
-          blur = 46;
-        } else if (custom.wordAnimation === "shimmer_gold") {
-          const grad = ctx.createLinearGradient(cursorX - itemW, slideY, cursorX, slideY);
-          grad.addColorStop(0, "#EBB94B");
-          grad.addColorStop(0.5, "#FFF7D6");
-          grad.addColorStop(1, "#EBB94B");
-          ctx.fillStyle = grad;
-          blur = 38;
-        } else if (custom.wordAnimation === "flip_reveal") {
-          const flipPhase = Math.min(1, progress * 1.6);
-          const scaleY = flipPhase < 0.5 ? 1 - flipPhase * 2 : (flipPhase - 0.5) * 2;
-          ctx.translate(cursorX - itemW / 2, slideY);
-          ctx.scale(1, Math.max(0.08, scaleY));
-          ctx.translate(-(cursorX - itemW / 2), -slideY);
-          blur = 42;
-        } else if (custom.wordAnimation === "glow_pulse") {
-          blur = 20 + 34 * Math.sin(progress * Math.PI);
-        } else if (custom.wordAnimation === "fade_slide_up") {
-          slideY = lineY + (1 - Math.min(1, progress * 2.2)) * 14;
-        } else if (custom.wordAnimation === "cinematic_zoom") {
-          scale = 0.96 + 0.14 * progress;
+        if (isPlaying) {
+          if (custom.wordAnimation === "pop_bounce") {
+            const spring = progress < 0.35 ? 0.85 + 0.4 * (progress / 0.35) : 1.25 - 0.17 * ((progress - 0.35) / 0.65);
+            scale = 1.0 * spring;
+            blur = 46;
+          } else if (custom.wordAnimation === "shimmer_gold") {
+            const grad = ctx.createLinearGradient(cursorX - itemW, slideY, cursorX, slideY);
+            grad.addColorStop(0, "#EBB94B");
+            grad.addColorStop(0.5, "#FFF7D6");
+            grad.addColorStop(1, "#EBB94B");
+            ctx.fillStyle = grad;
+            blur = 38;
+          } else if (custom.wordAnimation === "flip_reveal") {
+            const flipPhase = Math.min(1, progress * 1.6);
+            const scaleY = flipPhase < 0.5 ? 1 - flipPhase * 2 : (flipPhase - 0.5) * 2;
+            ctx.translate(cursorX - itemW / 2, slideY);
+            ctx.scale(1, Math.max(0.08, scaleY));
+            ctx.translate(-(cursorX - itemW / 2), -slideY);
+            blur = 42;
+          } else if (custom.wordAnimation === "glow_pulse") {
+            blur = 20 + 34 * Math.sin(progress * Math.PI);
+          } else if (custom.wordAnimation === "fade_slide_up") {
+            slideY = lineY + (1 - Math.min(1, progress * 2.2)) * 14;
+          } else if (custom.wordAnimation === "cinematic_zoom") {
+            scale = 0.96 + 0.14 * progress;
+          }
         }
 
         ctx.shadowColor = glowColor;
         ctx.shadowBlur = blur;
-        if (custom.wordAnimation !== "shimmer_gold") {
+        if (custom.wordAnimation !== "shimmer_gold" || !isPlaying) {
           ctx.fillStyle = "#FFE885";
         }
         ctx.font = `700 ${fontSize * scale}px ${fontName}`;
         ctx.fillText(textToDraw, cursorX, slideY);
 
-        if (custom.wordAnimation === "typewriter" && progress < 0.96 && custom.cursorStyle !== "none") {
+        if (isPlaying && custom.wordAnimation === "typewriter" && progress < 0.96 && custom.cursorStyle !== "none") {
           const typedW = ctx.measureText(textToDraw).width;
           const curX = cursorX - typedW - 5;
           const curY = slideY - 4;
@@ -4739,8 +4587,9 @@ function renderTextLinesCentered(
         }
       } else {
         const isPast = activeIdx !== -1 && item.wordIdx < activeIdx;
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = isPast ? "rgba(255, 245, 220, 0.85)" : "rgba(230, 220, 200, 0.45)";
+        ctx.shadowColor = "rgba(0, 0, 0, 0.85)";
+        ctx.shadowBlur = 8;
+        ctx.fillStyle = isPast ? "rgba(255, 245, 220, 0.95)" : "rgba(255, 255, 255, 0.92)";
         ctx.font = `700 ${fontSize}px ${fontName}`;
         ctx.fillText(item.text, cursorX, lineY);
       }
