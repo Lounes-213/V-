@@ -28,9 +28,11 @@ type Props = {
   loop: TimelineLoop;
   /** Normalised 0–1 loudness per bucket. Falls back to word density. */
   envelope?: number[];
+  selectedWordIndex?: number | null;
   onSeek: (time: number) => void;
   onTogglePlay: () => void;
   onLoopChange: (loop: TimelineLoop) => void;
+  onSelectWord?: (index: number) => void;
 };
 
 const MIN_PPS = 3;
@@ -70,9 +72,11 @@ export function StudioTimeline({
   isPlaying,
   loop,
   envelope,
+  selectedWordIndex,
   onSeek,
   onTogglePlay,
   onLoopChange,
+  onSelectWord,
 }: Props) {
   const scrollerRef = React.useRef<HTMLDivElement | null>(null);
   const surfaceRef = React.useRef<HTMLDivElement | null>(null);
@@ -452,6 +456,7 @@ export function StudioTimeline({
               const left = word.start * pps;
               const width = Math.max(16, (word.end - word.start) * pps - 3);
               const active = index === activeIndex;
+              const isSelected = selectedWordIndex !== undefined && selectedWordIndex !== null && selectedWordIndex === index;
               const inside = loop ? word.start >= loop.start && word.end <= loop.end : false;
               return (
                 <button
@@ -462,6 +467,7 @@ export function StudioTimeline({
                   onClick={(event) => {
                     event.stopPropagation();
                     jumpTo(word.start);
+                    onSelectWord?.(index);
                   }}
                   onDoubleClick={(event) => {
                     event.stopPropagation();
@@ -487,22 +493,29 @@ export function StudioTimeline({
                     justifyContent: "center",
                     overflow: "hidden",
                     padding: width > 34 ? "0 6px" : 0,
-                    border: "none",
+                    border: isSelected ? "2px solid #FFD700" : "none",
                     borderRadius: 8,
                     cursor: "pointer",
                     fontSize: 12,
-                    fontWeight: active ? 700 : 500,
+                    fontWeight: active || isSelected ? 700 : 500,
                     fontFamily: "'Amiri', 'Cairo', serif",
                     whiteSpace: "nowrap",
-                    color: active ? "#0A0D18" : "#DDE6F2",
-                    background: active
-                      ? "linear-gradient(135deg, #8AB9FF, #4D9BFF)"
-                      : inside
-                        ? "rgba(77,155,255,0.22)"
-                        : "rgba(255,255,255,0.09)",
-                    boxShadow: active ? "0 0 14px rgba(77,155,255,0.55)" : "none",
-                    transform: active ? "translateY(-1px)" : "none",
-                    transition: "background 120ms linear, color 120ms linear",
+                    color: isSelected ? "#FFF" : active ? "#0A0D18" : "#DDE6F2",
+                    background: isSelected
+                      ? "linear-gradient(135deg, #FFB800, #E08700)"
+                      : active
+                        ? "linear-gradient(135deg, #8AB9FF, #4D9BFF)"
+                        : inside
+                          ? "rgba(77,155,255,0.22)"
+                          : "rgba(255,255,255,0.09)",
+                    boxShadow: isSelected
+                      ? "0 0 16px rgba(255,184,0,0.8)"
+                      : active
+                        ? "0 0 14px rgba(77,155,255,0.55)"
+                        : "none",
+                    transform: active || isSelected ? "translateY(-1px)" : "none",
+                    transition: "all 120ms linear",
+                    zIndex: isSelected ? 10 : active ? 5 : 1,
                   }}
                 >
                   {/* Below ~30px the Arabic glyphs would be unreadable slivers,

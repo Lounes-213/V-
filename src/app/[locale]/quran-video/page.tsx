@@ -443,17 +443,6 @@ export default function QuranVideoPage() {
     aspect: "9:16",
   });
 
-  /** Word highlighted by the playhead right now (drives the mobile dock). */
-  const activeWordIndex = React.useMemo(() => {
-    const words = syncedData?.words ?? [];
-    let index = -1;
-    for (let i = 0; i < words.length; i += 1) {
-      if (words[i]!.start <= currentTime) index = i;
-      else break;
-    }
-    return index;
-  }, [syncedData, currentTime]);
-
   const [loopRange, setLoopRange] = React.useState<{ start: number; end: number } | null>(null);
   // Mirrored in a ref so the audio listeners keep working with a stable effect
   // dependency list while still seeing the current loop.
@@ -463,7 +452,8 @@ export default function QuranVideoPage() {
   }, [loopRange]);
 
   const [activeTab, setActiveTab] = React.useState<"words" | "anim" | "box" | "bg" | "audio" | "style">("words");
-  const [mobileActiveView, setMobileActiveView] = React.useState<"preview" | "controls">("preview");
+  const [activeMobileSheet, setActiveMobileSheet] = React.useState<null | "captions" | "audio" | "style" | "canvas" | "tajweed">(null);
+  const [selectedWordIdx, setSelectedWordIdx] = React.useState<number | null>(0);
 
   // Refs
   const recorderRef = React.useRef<MediaRecorder | null>(null);
@@ -1212,6 +1202,644 @@ export default function QuranVideoPage() {
     return buckets;
   }, [syncedData]);
 
+  /* ---------------------------------------------------- WORD TIMING & REPETITIONS */
+
+  const playWordSlice = React.useCallback((start: number, end: number) => {
+    seekTo(start);
+    const audio = previewAudioRef.current;
+    if (!audio) return;
+    audio.currentTime = start;
+    audio.play().then(() => {
+      setIsPlaying(true);
+      const durationMs = Math.max(250, (end - start) * 1000);
+      setTimeout(() => {
+        audio.pause();
+        setIsPlaying(false);
+      }, durationMs);
+    }).catch(() => {});
+  }, [seekTo]);
+
+  const handleNudgeWord = React.useCallback((index: number, deltaStart: number, deltaEnd: number) => {
+    if (!syncedData) return;
+    const newWords = [...syncedData.words];
+    const target = newWords[index];
+    if (!target) return;
+
+    const newStart = Math.max(0, Number((target.start + deltaStart).toFixed(3)));
+    let newEnd = Math.max(newStart + 0.1, Number((target.end + deltaEnd).toFixed(3)));
+    if (newEnd > syncedData.duration) newEnd = syncedData.duration;
+
+    newWords[index] = {
+      ...target,
+      start: newStart,
+      end: newEnd,
+    };
+
+    newWords.sort((a, b) => a.start - b.start);
+    const speechRuns = newWords.map((w) => ({ start: w.start, end: w.end }));
+
+    setSyncedData({
+      ...syncedData,
+      words: newWords,
+      speechRuns,
+    });
+    seekTo(newStart);
+  }, [syncedData, seekTo]);
+
+  const handleSetWordBoundary = React.useCallback((index: number, edge: "start" | "end") => {
+    if (!syncedData) return;
+    const newWords = [...syncedData.words];
+    const target = newWords[index];
+    if (!target) return;
+
+    const cur = Number(currentTime.toFixed(3));
+    if (edge === "start") {
+      const newStart = Math.min(cur, target.end - 0.1);
+      newWords[index] = { ...target, start: Math.max(0, newStart) };
+    } else {
+      const newEnd = Math.max(cur, target.start + 0.1);
+      newWords[index] = { ...target, end: Math.min(syncedData.duration, newEnd) };
+    }
+
+    newWords.sort((a, b) => a.start - b.start);
+    const speechRuns = newWords.map((w) => ({ start: w.start, end: w.end }));
+
+    setSyncedData({
+      ...syncedData,
+      words: newWords,
+      speechRuns,
+    });
+  }, [syncedData, currentTime]);
+
+  const handleDuplicateWord = React.useCallback((index: number) => {
+    if (!syncedData) return;
+    const target = syncedData.words[index];
+    if (!target) return;
+
+    const dur = Math.max(0.2, target.end - target.start);
+    const duplicated = {
+      ...target,
+      start: Number((target.end + 0.05).toFixed(3)),
+      end: Number((target.end + 0.05 + dur).toFixed(3)),
+    };
+
+    const newWords = [...syncedData.words];
+    newWords.splice(index + 1, 0, duplicated);
+    newWords.sort((a, b) => a.start - b.start);
+
+    const speechRuns = newWords.map((w) => ({ start: w.start, end: w.end }));
+    setSyncedData({
+      ...syncedData,
+      words: newWords,
+      speechRuns,
+    });
+    setSelectedWordIdx(index + 1);
+    seekTo(duplicated.start);
+  }, [syncedData, seekTo]);
+
+  const handleDeleteWord = React.useCallback((index: number) => {
+    if (!syncedData || syncedData.words.length <= 1) return;
+    const newWords = syncedData.words.filter((_, i) => i !== index);
+    const speechRuns = newWords.map((w) => ({ start: w.start, end: w.end }));
+    setSyncedData({
+      ...syncedData,
+      words: newWords,
+      speechRuns,
+    });
+    setSelectedWordIdx(Math.max(0, index - 1));
+  }, [syncedData]);
+
+  const handleAdjustMaddLength = React.useCallback((index: number, extraSec: number) => {
+    if (!syncedData) return;
+    const newWords = [...syncedData.words];
+    const target = newWords[index];
+    if (!target) return;
+
+    const newEnd = Math.max(target.start + 0.2, Number((target.end + extraSec).toFixed(3)));
+    newWords[index] = {
+      ...target,
+      end: Math.min(syncedData.duration, newEnd),
+      hasMadd: true,
+    };
+
+    const speechRuns = newWords.map((w) => ({ start: w.start, end: w.end }));
+    setSyncedData({
+      ...syncedData,
+      words: newWords,
+      speechRuns,
+    });
+  }, [syncedData]);
+
+  const handleDuplicateAyah = React.useCallback((ayahNumber: number) => {
+    if (!syncedData) return;
+    const ayahWords = syncedData.words.filter((w) => w.ayah === ayahNumber);
+    if (ayahWords.length === 0) return;
+
+    const lastWord = ayahWords[ayahWords.length - 1]!;
+    const offset = Number((lastWord.end + 0.25 - ayahWords[0]!.start).toFixed(3));
+
+    const duplicatedAyahWords = ayahWords.map((w) => ({
+      ...w,
+      start: Number((w.start + offset).toFixed(3)),
+      end: Number((w.end + offset).toFixed(3)),
+    }));
+
+    const newWords = [...syncedData.words, ...duplicatedAyahWords];
+    newWords.sort((a, b) => a.start - b.start);
+    const speechRuns = newWords.map((w) => ({ start: w.start, end: w.end }));
+
+    setSyncedData({
+      ...syncedData,
+      words: newWords,
+      speechRuns,
+    });
+    seekTo(duplicatedAyahWords[0]!.start);
+  }, [syncedData, seekTo]);
+
+  const toolChipBtn: React.CSSProperties = {
+    border: "1px solid rgba(255, 255, 255, 0.14)",
+    borderRadius: 8,
+    padding: "6px 10px",
+    fontSize: 12,
+    fontWeight: 600,
+    cursor: "pointer",
+    background: "rgba(255, 255, 255, 0.05)",
+    color: "#E8EEF7",
+    transition: "all 0.12s ease",
+  };
+
+  const renderWordTimingInspector = () => {
+    if (!syncedData) return null;
+    const words = syncedData.words;
+    const selectedWord =
+      selectedWordIdx !== null && selectedWordIdx >= 0 && selectedWordIdx < words.length
+        ? words[selectedWordIdx]
+        : null;
+
+    // Group words by ayah
+    const ayahsMap = new Map<number, { text: string; idx: number; word: (typeof words)[0] }[]>();
+    words.forEach((w, idx) => {
+      const a = w.ayah ?? 1;
+      if (!ayahsMap.has(a)) ayahsMap.set(a, []);
+      ayahsMap.get(a)!.push({ text: w.text, idx, word: w });
+    });
+
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 16, direction: "rtl" }}>
+        {/* 1. Selected Word Inspector Card */}
+        {selectedWord && selectedWordIdx !== null ? (
+          <div
+            style={{
+              background: "linear-gradient(135deg, rgba(43,127,255,0.18) 0%, rgba(15,22,40,0.85) 100%)",
+              border: "1px solid rgba(43,127,255,0.45)",
+              borderRadius: 16,
+              padding: "16px",
+              boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span
+                  style={{
+                    fontSize: 11,
+                    background: "rgba(255,184,0,0.2)",
+                    color: "#FFD700",
+                    border: "1px solid rgba(255,184,0,0.4)",
+                    padding: "2px 8px",
+                    borderRadius: 6,
+                    fontWeight: 700,
+                  }}
+                >
+                  الكلمة #{selectedWordIdx + 1}
+                </span>
+                <span style={{ fontSize: 12, color: "rgba(200,210,230,0.7)" }}>
+                  الآية {selectedWord.ayah}
+                </span>
+              </div>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button
+                  type="button"
+                  onClick={() => playWordSlice(selectedWord.start, selectedWord.end)}
+                  style={{
+                    padding: "5px 12px",
+                    borderRadius: 8,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    background: "linear-gradient(135deg, #2B7FFF, #1552CC)",
+                    color: "#0A0D18",
+                    border: "none",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                  }}
+                >
+                  ▶️ استماع
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDuplicateWord(selectedWordIdx)}
+                  style={{
+                    ...toolChipBtn,
+                    padding: "5px 10px",
+                  }}
+                  title="تكرار الكلمة مباشرة بعد هذا الموضع"
+                >
+                  ➕ تكرار
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteWord(selectedWordIdx)}
+                  style={{
+                    ...toolChipBtn,
+                    padding: "5px 10px",
+                    background: "rgba(239,68,68,0.15)",
+                    color: "#FCA5A5",
+                    border: "1px solid rgba(239,68,68,0.3)",
+                  }}
+                  title="حذف الكلمة"
+                >
+                  🗑️
+                </button>
+              </div>
+            </div>
+
+            {/* Active Word Display */}
+            <div style={{ textAlign: "center", margin: "6px 0 12px" }}>
+              <span
+                style={{
+                  fontSize: 32,
+                  fontFamily: "'Amiri', serif",
+                  color: "#FFE885",
+                  textShadow: "0 0 16px rgba(255,215,0,0.4)",
+                }}
+              >
+                « {selectedWord.text} »
+              </span>
+            </div>
+
+            {/* Timing details pill */}
+            <div
+              className="force-ltr"
+              style={{
+                display: "flex",
+                justifyContent: "space-around",
+                background: "rgba(0,0,0,0.35)",
+                borderRadius: 10,
+                padding: "8px 12px",
+                marginBottom: 12,
+                fontSize: 12,
+                fontFamily: "monospace",
+              }}
+            >
+              <div>
+                <span style={{ color: "rgba(200,210,230,0.6)" }}>البداية: </span>
+                <span style={{ color: "#4D9BFF", fontWeight: 700 }}>{selectedWord.start.toFixed(2)}s</span>
+              </div>
+              <div>
+                <span style={{ color: "rgba(200,210,230,0.6)" }}>المدة: </span>
+                <span style={{ color: "#34D399", fontWeight: 700 }}>
+                  {(selectedWord.end - selectedWord.start).toFixed(2)}s
+                </span>
+              </div>
+              <div>
+                <span style={{ color: "rgba(200,210,230,0.6)" }}>النهاية: </span>
+                <span style={{ color: "#F472B6", fontWeight: 700 }}>{selectedWord.end.toFixed(2)}s</span>
+              </div>
+            </div>
+
+            {/* Timing Nudges & Snap Grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+              {/* Start Edge Controls */}
+              <div
+                style={{
+                  background: "rgba(255,255,255,0.03)",
+                  padding: 10,
+                  borderRadius: 10,
+                  border: "1px solid rgba(255,255,255,0.06)",
+                }}
+              >
+                <div style={{ fontSize: 11, color: "rgba(200,210,230,0.7)", marginBottom: 6, fontWeight: 700 }}>
+                  توقيت بداية الكلمة:
+                </div>
+                <div style={{ display: "flex", gap: 4, marginBottom: 6 }}>
+                  <button
+                    type="button"
+                    onClick={() => handleNudgeWord(selectedWordIdx, -0.1, 0)}
+                    style={{ ...toolChipBtn, flex: 1, padding: "6px 2px", fontSize: 11 }}
+                  >
+                    -0.1s
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleNudgeWord(selectedWordIdx, +0.1, 0)}
+                    style={{ ...toolChipBtn, flex: 1, padding: "6px 2px", fontSize: 11 }}
+                  >
+                    +0.1s
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleSetWordBoundary(selectedWordIdx, "start")}
+                  style={{
+                    ...toolChipBtn,
+                    width: "100%",
+                    fontSize: 11,
+                    background: "rgba(43,127,255,0.2)",
+                    color: "#8AB9FF",
+                    border: "1px solid rgba(43,127,255,0.4)",
+                  }}
+                  title="مطابقة بداية الكلمة مع موضع تشغيل الصوت الحالي"
+                >
+                  📍 ضبط عند المؤشر ({currentTime.toFixed(2)}s)
+                </button>
+              </div>
+
+              {/* End Edge Controls */}
+              <div
+                style={{
+                  background: "rgba(255,255,255,0.03)",
+                  padding: 10,
+                  borderRadius: 10,
+                  border: "1px solid rgba(255,255,255,0.06)",
+                }}
+              >
+                <div style={{ fontSize: 11, color: "rgba(200,210,230,0.7)", marginBottom: 6, fontWeight: 700 }}>
+                  توقيت نهاية الكلمة:
+                </div>
+                <div style={{ display: "flex", gap: 4, marginBottom: 6 }}>
+                  <button
+                    type="button"
+                    onClick={() => handleNudgeWord(selectedWordIdx, 0, -0.1)}
+                    style={{ ...toolChipBtn, flex: 1, padding: "6px 2px", fontSize: 11 }}
+                  >
+                    -0.1s
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleNudgeWord(selectedWordIdx, 0, +0.1)}
+                    style={{ ...toolChipBtn, flex: 1, padding: "6px 2px", fontSize: 11 }}
+                  >
+                    +0.1s
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleSetWordBoundary(selectedWordIdx, "end")}
+                  style={{
+                    ...toolChipBtn,
+                    width: "100%",
+                    fontSize: 11,
+                    background: "rgba(43,127,255,0.2)",
+                    color: "#8AB9FF",
+                    border: "1px solid rgba(43,127,255,0.4)",
+                  }}
+                  title="مطابقة نهاية الكلمة مع موضع تشغيل الصوت الحالي"
+                >
+                  📍 ضبط عند المؤشر ({currentTime.toFixed(2)}s)
+                </button>
+              </div>
+            </div>
+
+            {/* Tajweed Madd Elongation controls */}
+            <div
+              style={{
+                background: "rgba(255,255,255,0.03)",
+                padding: 10,
+                borderRadius: 10,
+                border: "1px solid rgba(255,255,255,0.06)",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <span style={{ fontSize: 11, color: "rgba(200,210,230,0.8)", fontWeight: 700 }}>
+                  أحكام المد وطول الكلمة بالحركات:
+                </span>
+                <span style={{ fontSize: 11, color: "#F6AD55", fontWeight: 700 }}>
+                  {selectedWord.hasMadd
+                    ? selectedWord.maddHarakat
+                      ? `مد ${selectedWord.maddHarakat} حركات`
+                      : "مد متصل/لازم"
+                    : "مد طبيعي (حركتان)"}
+                </span>
+              </div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  onClick={() => handleAdjustMaddLength(selectedWordIdx, 0.25)}
+                  style={{ ...toolChipBtn, flex: 1, fontSize: 11, padding: "5px" }}
+                >
+                  +حركة (0.25s)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAdjustMaddLength(selectedWordIdx, 0.5)}
+                  style={{ ...toolChipBtn, flex: 1, fontSize: 11, padding: "5px" }}
+                >
+                  +حركتان (0.5s)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAdjustMaddLength(selectedWordIdx, 1.0)}
+                  style={{ ...toolChipBtn, flex: 1, fontSize: 11, padding: "5px" }}
+                >
+                  +4 حركات (1.0s)
+                </button>
+              </div>
+            </div>
+
+            {/* Next / Prev Stepper */}
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  const prev = Math.max(0, selectedWordIdx - 1);
+                  setSelectedWordIdx(prev);
+                  seekTo(words[prev]!.start);
+                }}
+                disabled={selectedWordIdx <= 0}
+                style={{ ...toolChipBtn, padding: "6px 14px", fontSize: 12, opacity: selectedWordIdx <= 0 ? 0.4 : 1 }}
+              >
+                ⏮️ الكلمة السابقة
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const next = Math.min(words.length - 1, selectedWordIdx + 1);
+                  setSelectedWordIdx(next);
+                  seekTo(words[next]!.start);
+                }}
+                disabled={selectedWordIdx >= words.length - 1}
+                style={{
+                  ...toolChipBtn,
+                  padding: "6px 14px",
+                  fontSize: 12,
+                  opacity: selectedWordIdx >= words.length - 1 ? 0.4 : 1,
+                }}
+              >
+                الكلمة التالية ⏭️
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {/* 2. Ayahs and Word Pills List (with silence detection) */}
+        <div>
+          <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#8AB9FF", marginBottom: 8 }}>
+            قائمة الآيات والكلمات (انقر على أي كلمة لتعديل توقيتها أو تكرارها):
+          </label>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {Array.from(ayahsMap.entries()).map(([ayahNum, ayahWordItems]) => {
+              const firstWord = ayahWordItems[0]?.word;
+              const lastWord = ayahWordItems[ayahWordItems.length - 1]?.word;
+              const ayahStart = firstWord?.start ?? 0;
+              const ayahEnd = lastWord?.end ?? 0;
+              const isLoopingThisAyah =
+                loopRange &&
+                Math.abs(loopRange.start - ayahStart) < 0.05 &&
+                Math.abs(loopRange.end - ayahEnd) < 0.05;
+
+              return (
+                <div
+                  key={ayahNum}
+                  style={{
+                    background: "rgba(255,255,255,0.02)",
+                    border: isLoopingThisAyah ? "1px solid rgba(77,155,255,0.6)" : "1px solid rgba(255,255,255,0.07)",
+                    borderRadius: 14,
+                    padding: "12px",
+                  }}
+                >
+                  {/* Ayah Header */}
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: 10,
+                      flexWrap: "wrap",
+                      gap: 6,
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: "#FFE885" }}>
+                        الآية {ayahNum}
+                      </span>
+                      <span className="force-ltr" style={{ fontSize: 11, color: "rgba(200,210,230,0.5)" }}>
+                        ({formatTime(ayahStart)} - {formatTime(ayahEnd)})
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (isLoopingThisAyah) {
+                            setLoopRange(null);
+                          } else {
+                            setLoopRange({ start: ayahStart, end: ayahEnd });
+                            seekTo(ayahStart);
+                          }
+                        }}
+                        style={{
+                          padding: "4px 8px",
+                          borderRadius: 6,
+                          fontSize: 11,
+                          background: isLoopingThisAyah ? "rgba(77,155,255,0.3)" : "rgba(255,255,255,0.06)",
+                          color: isLoopingThisAyah ? "#8AB9FF" : "#E8EEF7",
+                          border: `1px solid ${isLoopingThisAyah ? "rgba(77,155,255,0.6)" : "rgba(255,255,255,0.1)"}`,
+                          cursor: "pointer",
+                        }}
+                      >
+                        🔁 {isLoopingThisAyah ? "إلغاء التكرار" : "تكرار الآية"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDuplicateAyah(ayahNum)}
+                        style={{
+                          padding: "4px 8px",
+                          borderRadius: 6,
+                          fontSize: 11,
+                          background: "rgba(255,255,255,0.06)",
+                          color: "#E8EEF7",
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          cursor: "pointer",
+                        }}
+                        title="مضاعفة كلمات الآية"
+                      >
+                        ➕ مضاعفة
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Words Flow */}
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+                    {ayahWordItems.map(({ text, idx, word }, itemIdx) => {
+                      const isSelected = selectedWordIdx === idx;
+                      const nextItem = ayahWordItems[itemIdx + 1];
+                      const pauseSec = nextItem ? Number((nextItem.word.start - word.end).toFixed(2)) : 0;
+
+                      return (
+                        <React.Fragment key={`${word.start}-${idx}`}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedWordIdx(idx);
+                              seekTo(word.start);
+                            }}
+                            style={{
+                              padding: "6px 10px",
+                              borderRadius: 8,
+                              fontSize: 14,
+                              fontFamily: "'Amiri', serif",
+                              cursor: "pointer",
+                              transition: "all 0.15s ease",
+                              border: isSelected ? "2px solid #FFD700" : "1px solid rgba(255,255,255,0.12)",
+                              background: isSelected
+                                ? "linear-gradient(135deg, rgba(255,184,0,0.3), rgba(224,135,0,0.2))"
+                                : "rgba(255,255,255,0.05)",
+                              color: isSelected ? "#FFE885" : "#E8EEF7",
+                              boxShadow: isSelected ? "0 0 12px rgba(255,215,0,0.4)" : "none",
+                              transform: isSelected ? "scale(1.05)" : "none",
+                            }}
+                          >
+                            <span>{text}</span>
+                            {word.hasMadd && (
+                              <span style={{ fontSize: 10, color: "#F6AD55", marginRight: 4 }}>
+                                ٓ
+                              </span>
+                            )}
+                          </button>
+
+                          {/* Inline Silence / Pause indicator between words */}
+                          {pauseSec >= 0.25 ? (
+                            <span
+                              className="force-ltr"
+                              title={`سكت ووقف لمدة ${pauseSec} ثانية`}
+                              style={{
+                                fontSize: 10,
+                                padding: "2px 6px",
+                                borderRadius: 4,
+                                background: "rgba(255,255,255,0.06)",
+                                color: "rgba(200,210,230,0.5)",
+                                border: "1px dashed rgba(255,255,255,0.15)",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              ⏸️ {pauseSec}s
+                            </span>
+                          ) : null}
+                        </React.Fragment>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   /* ---------------------------------------------------- EXPORT VIDEO */
 
   const exportVideo = async () => {
@@ -1387,13 +2015,28 @@ export default function QuranVideoPage() {
           0%, 100% { opacity: 1; transform: scale(1); }
           50% { opacity: 0.6; transform: scale(1.15); }
         }
+        @keyframes sheetSlideUp {
+          from { transform: translateY(100%); }
+          to { transform: translateY(0); }
+        }
         .quran-studio-grid {
           display: grid;
           grid-template-columns: minmax(360px, 440px) minmax(0, 1fr);
           gap: 24px;
           align-items: start;
         }
-        .mobile-view-switcher {
+        .desktop-only-panel {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+        .mobile-bottom-dock {
+          display: none;
+        }
+        .mobile-bottom-sheet-backdrop {
+          display: none;
+        }
+        .mobile-bottom-sheet {
           display: none;
         }
         .tab-scroll-header {
@@ -1413,40 +2056,88 @@ export default function QuranVideoPage() {
           align-items: end;
         }
         @media (max-width: 860px) {
+          .desktop-only-panel {
+            display: none !important;
+          }
           .quran-studio-grid {
             grid-template-columns: 1fr !important;
             gap: 14px !important;
             width: 100% !important;
             overflow-x: hidden !important;
+            padding-bottom: 84px !important;
           }
-          .mobile-view-switcher {
+          .canvas-frame-container {
+            max-height: 38vh !important;
+            width: auto !important;
+          }
+          .canvas-frame-container canvas {
+            max-height: 38vh !important;
+            width: auto !important;
+            margin: 0 auto !important;
+          }
+          .mobile-bottom-dock {
             display: flex !important;
-            position: sticky !important;
-            top: 10px !important;
-            z-index: 90 !important;
-            width: 100% !important;
-            background: rgba(9, 13, 25, 0.94) !important;
-            backdrop-filter: blur(16px) !important;
-            border: 1px solid rgba(43, 127, 255, 0.35) !important;
-            box-shadow: 0 8px 28px rgba(0,0,0,0.6) !important;
-            padding: 5px !important;
-            border-radius: 14px !important;
-            gap: 6px !important;
-            margin-bottom: 14px !important;
+            position: fixed !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            height: 64px !important;
+            background: rgba(8, 12, 22, 0.97) !important;
+            backdrop-filter: blur(20px) !important;
+            -webkit-backdrop-filter: blur(20px) !important;
+            border-top: 1px solid rgba(43, 127, 255, 0.35) !important;
+            z-index: 95 !important;
+            padding: 4px 6px !important;
+            align-items: center !important;
+            justify-content: space-around !important;
+            box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.8) !important;
           }
-          .mobile-view-switcher button {
-            flex: 1 !important;
-            padding: 12px 10px !important;
-            border-radius: 10px !important;
-            font-size: 13px !important;
-            font-weight: 700 !important;
+          .mobile-dock-btn {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 2px !important;
+            background: transparent !important;
             border: none !important;
+            color: rgba(220, 230, 245, 0.72) !important;
+            font-size: 11px !important;
+            font-weight: 600 !important;
+            padding: 5px 8px !important;
+            border-radius: 10px !important;
             cursor: pointer !important;
             transition: all 0.15s ease !important;
           }
-          .mobile-panel-preview.hidden-on-mobile,
-          .mobile-panel-controls.hidden-on-mobile {
-            display: none !important;
+          .mobile-dock-btn.active {
+            color: #8AB9FF !important;
+            background: rgba(43, 127, 255, 0.18) !important;
+          }
+          .mobile-bottom-sheet-backdrop {
+            display: block !important;
+            position: fixed !important;
+            inset: 0 !important;
+            background: rgba(0, 0, 0, 0.5) !important;
+            backdrop-filter: blur(3px) !important;
+            -webkit-backdrop-filter: blur(3px) !important;
+            z-index: 98 !important;
+          }
+          .mobile-bottom-sheet {
+            display: flex !important;
+            position: fixed !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            max-height: 58vh !important;
+            height: 58vh !important;
+            background: rgba(10, 14, 26, 0.98) !important;
+            backdrop-filter: blur(24px) !important;
+            -webkit-backdrop-filter: blur(24px) !important;
+            border-top: 1px solid rgba(43, 127, 255, 0.45) !important;
+            border-radius: 22px 22px 0 0 !important;
+            z-index: 99 !important;
+            flex-direction: column !important;
+            box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.85) !important;
+            animation: sheetSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
           }
           .tab-scroll-header {
             flex-wrap: nowrap !important;
@@ -1472,32 +2163,6 @@ export default function QuranVideoPage() {
             grid-column: 1 / -1 !important;
             width: 100% !important;
             padding: 12px !important;
-          }
-          .canvas-frame-container {
-            max-width: min(315px, 82vw) !important;
-            max-height: 48vh !important;
-            margin: 0 auto !important;
-          }
-          .mobile-sticky-bar {
-            display: flex !important;
-            position: fixed !important;
-            bottom: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            background: rgba(8, 12, 22, 0.95) !important;
-            backdrop-filter: blur(16px) !important;
-            border-top: 1px solid rgba(43, 127, 255, 0.35) !important;
-            padding: 10px 14px !important;
-            z-index: 999 !important;
-            align-items: center !important;
-            justify-content: space-between !important;
-            gap: 10px !important;
-            box-shadow: 0 -8px 24px rgba(0,0,0,0.6) !important;
-          }
-        }
-        @media (min-width: 861px) {
-          .mobile-sticky-bar {
-            display: none !important;
           }
         }
       `}</style>
@@ -2006,29 +2671,26 @@ export default function QuranVideoPage() {
                 >
                   تلاوة أو مقطع جديد
                 </button>
-              </div>
-            </div>
 
-            {/* Mobile View Switcher */}
-            <div className="mobile-view-switcher" style={{ direction: "rtl" }}>
-              <button
-                onClick={() => setMobileActiveView("preview")}
-                style={{
-                  background: mobileActiveView === "preview" ? "linear-gradient(135deg, #2B7FFF, #1552CC)" : "transparent",
-                  color: mobileActiveView === "preview" ? "#0A0D18" : "#E8EEF7",
-                }}
-              >
-                شاشة المعاينة (9:16)
-              </button>
-              <button
-                onClick={() => setMobileActiveView("controls")}
-                style={{
-                  background: mobileActiveView === "controls" ? "linear-gradient(135deg, #2B7FFF, #1552CC)" : "transparent",
-                  color: mobileActiveView === "controls" ? "#0A0D18" : "#E8EEF7",
-                }}
-              >
-                أدوات المونتاج (Studio)
-              </button>
+                <button
+                  id="topExportBtn"
+                  onClick={exportVideo}
+                  disabled={stage === "exporting"}
+                  style={{
+                    ...primaryBtn,
+                    width: "auto",
+                    padding: "8px 18px",
+                    fontSize: 13,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    background: "linear-gradient(135deg, #2B7FFF, #A8C7FF)",
+                    boxShadow: "0 4px 14px rgba(43,127,255,0.4)",
+                  }}
+                >
+                  🎬 {stage === "exporting" ? `${exportProgress}%` : "تصدير الفيديو"}
+                </button>
+              </div>
             </div>
 
             {/* Studio Workspace: Two Columns (Preview on Left / Controls on Right) */}
@@ -2036,7 +2698,6 @@ export default function QuranVideoPage() {
 
               {/* ---------------- LEFT: LIVE INTERACTIVE PREVIEW ---------------- */}
               <div
-                className={`mobile-panel-preview ${mobileActiveView === "controls" ? "hidden-on-mobile" : ""}`}
                 style={{ display: "flex", flexDirection: "column", gap: 16 }}
               >
                 <Card>
@@ -2226,10 +2887,52 @@ export default function QuranVideoPage() {
                         isPlaying={isPlaying}
                         loop={loopRange}
                         envelope={timelineEnvelope}
+                        selectedWordIndex={selectedWordIdx}
                         onSeek={seekTo}
                         onTogglePlay={togglePlayPreview}
                         onLoopChange={(next: TimelineLoop) => setLoopRange(next)}
+                        onSelectWord={(idx: number) => setSelectedWordIdx(idx)}
                       />
+
+                      {selectedWordIdx !== null && syncedData.words[selectedWordIdx] && (
+                        <div
+                          style={{
+                            marginTop: 10,
+                            padding: "8px 12px",
+                            borderRadius: 10,
+                            background: "rgba(43,127,255,0.12)",
+                            border: "1px solid rgba(43,127,255,0.3)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            direction: "rtl",
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <span style={{ fontSize: 11, color: "rgba(200,210,230,0.6)" }}>الكلمة المحددة:</span>
+                            <span style={{ fontSize: 15, fontFamily: "'Amiri', serif", color: "#FFE885", fontWeight: 700 }}>
+                              « {syncedData.words[selectedWordIdx].text} »
+                            </span>
+                            <span className="force-ltr" style={{ fontSize: 11, color: "#8AB9FF" }}>
+                              ({syncedData.words[selectedWordIdx].start.toFixed(2)}s - {syncedData.words[selectedWordIdx].end.toFixed(2)}s)
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setActiveMobileSheet("captions")}
+                            style={{
+                              ...toolChipBtn,
+                              fontSize: 11,
+                              padding: "4px 8px",
+                              background: "rgba(43,127,255,0.25)",
+                              color: "#8AB9FF",
+                              border: "1px solid rgba(43,127,255,0.5)",
+                            }}
+                          >
+                            ✂️ تعديل التوقيت والسكت
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ) : null}
 
@@ -2261,9 +2964,9 @@ export default function QuranVideoPage() {
                 </Card>
               </div>
 
-              {/* ---------------- RIGHT: PRO MONTAGE STUDIO CONTROLS ---------------- */}
+              {/* ---------------- RIGHT: PRO MONTAGE STUDIO CONTROLS (DESKTOP) ---------------- */}
               <div
-                className={`mobile-panel-controls ${mobileActiveView === "preview" ? "hidden-on-mobile" : ""}`}
+                className="desktop-only-panel"
                 style={{ display: "flex", flexDirection: "column", gap: 16 }}
               >
                 <Card>
@@ -2303,6 +3006,9 @@ export default function QuranVideoPage() {
                   {/* TAB 1: VERSES, DISPLAY MODES, MADD & STANZA CHUNKING */}
                   {activeTab === "words" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 18, direction: "rtl" }}>
+                      {/* Live Word Timing & Ayah Inspector */}
+                      {renderWordTimingInspector()}
+
                       {/* Scope Selector */}
                       <div>
                         <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#8AB9FF", marginBottom: 8 }}>
@@ -3326,121 +4032,545 @@ export default function QuranVideoPage() {
               </Card>
             )}
 
-            {/* Mobile Sticky Floating Toolbar for single-thumb phone controls */}
+            {/* ================= TIKTOK/CAPCUT MOBILE BOTTOM DOCK & DRAWERS ================= */}
             {stage === "detected" && (
-              <div className="mobile-sticky-bar" style={{ direction: "rtl" }}>
-                <button
-                  onClick={togglePlayPreview}
-                  style={{
-                    background: isPlaying ? "rgba(239, 68, 68, 0.25)" : "linear-gradient(135deg, #2B7FFF, #1552CC)",
-                    color: isPlaying ? "#FCA5A5" : "#0A0D18",
-                    border: isPlaying ? "1px solid rgba(239, 68, 68, 0.5)" : "none",
-                    borderRadius: 10,
-                    padding: "9px 14px",
-                    fontSize: 13,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                  }}
-                >
-                  <span style={{ fontSize: 12 }}>{isPlaying ? "إيقاف مؤقت" : "تشغيل"}</span>
-                  <span style={{ fontSize: 12 }}>({formatTime(currentTime)})</span>
-                </button>
+              <>
+                {/* 1. Fixed Bottom Action Dock (5 Tools) */}
+                <div className="mobile-bottom-dock" style={{ direction: "rtl" }}>
+                  {[
+                    { id: "captions", icon: "✂️", label: "الكلمات" },
+                    { id: "audio", icon: "🎵", label: "الصوت" },
+                    { id: "style", icon: "🎨", label: "المظهر" },
+                    { id: "canvas", icon: "🎬", label: "المشهد" },
+                    { id: "tajweed", icon: "⏱️", label: "التجويد" },
+                  ].map((tool) => {
+                    const isActive = activeMobileSheet === tool.id;
+                    return (
+                      <button
+                        key={tool.id}
+                        type="button"
+                        className={`mobile-dock-btn ${isActive ? "active" : ""}`}
+                        onClick={() => setActiveMobileSheet(isActive ? null : (tool.id as typeof activeMobileSheet))}
+                      >
+                        <span style={{ fontSize: 18 }}>{tool.icon}</span>
+                        <span>{tool.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
 
-                {/* Word stepping and the ayah loop live in the dock too: on a
-                    phone the timeline is below the fold and the thumb is not. */}
-                <button
-                  onClick={() => {
-                    const words = syncedData?.words ?? [];
-                    const target = words[Math.max(0, activeWordIndex - 1)];
-                    if (target) seekTo(target.start);
-                  }}
-                  disabled={activeWordIndex <= 0}
-                  aria-label="الكلمة السابقة"
-                  style={{ ...dockButton, opacity: activeWordIndex <= 0 ? 0.45 : 1 }}
-                >
-                  ⏮ كلمة
-                </button>
+                {/* 2. Slide-Up Bottom Sheet Backdrop */}
+                {activeMobileSheet !== null && (
+                  <div
+                    className="mobile-bottom-sheet-backdrop"
+                    onClick={() => setActiveMobileSheet(null)}
+                  />
+                )}
 
-                <button
-                  onClick={() => {
-                    const words = syncedData?.words ?? [];
-                    const target = words[Math.min(words.length - 1, activeWordIndex + 1)];
-                    if (target) seekTo(target.start);
-                  }}
-                  disabled={activeWordIndex >= (syncedData?.words.length ?? 0) - 1}
-                  aria-label="الكلمة التالية"
-                  style={{
-                    ...dockButton,
-                    opacity: activeWordIndex >= (syncedData?.words.length ?? 0) - 1 ? 0.45 : 1,
-                  }}
-                >
-                  كلمة ⏭
-                </button>
+                {/* 3. Slide-Up Bottom Sheet Drawer */}
+                {activeMobileSheet !== null && (
+                  <div className="mobile-bottom-sheet" style={{ direction: "rtl" }}>
+                    {/* Top Grab Handle */}
+                    <div
+                      style={{
+                        width: 44,
+                        height: 5,
+                        borderRadius: 3,
+                        background: "rgba(255,255,255,0.25)",
+                        margin: "10px auto 4px",
+                        cursor: "pointer",
+                      }}
+                      onClick={() => setActiveMobileSheet(null)}
+                    />
 
-                <button
-                  onClick={() => {
-                    if (loopRange) {
-                      setLoopRange(null);
-                      return;
-                    }
-                    const words = syncedData?.words ?? [];
-                    const word = words[Math.max(0, activeWordIndex)];
-                    if (!word || word.ayah === undefined) return;
-                    const same = words.filter((item) => item.ayah === word.ayah);
-                    if (same.length === 0) return;
-                    setLoopRange({
-                      start: Math.min(...same.map((item) => item.start)),
-                      end: Math.max(...same.map((item) => item.end)),
-                    });
-                  }}
-                  aria-pressed={Boolean(loopRange)}
-                  aria-label="تكرار الآية"
-                  style={{
-                    ...dockButton,
-                    background: loopRange ? "rgba(77,155,255,0.22)" : "rgba(255,255,255,0.08)",
-                    color: loopRange ? "#8AB9FF" : "#E8EEF7",
-                    border: `1px solid ${loopRange ? "rgba(77,155,255,0.5)" : "rgba(255,255,255,0.15)"}`,
-                  }}
-                >
-                  🔁
-                </button>
+                    {/* Drawer Header */}
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "10px 18px 12px",
+                        borderBottom: "1px solid rgba(255,255,255,0.08)",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <button
+                          type="button"
+                          onClick={togglePlayPreview}
+                          style={{
+                            padding: "6px 12px",
+                            borderRadius: 8,
+                            background: isPlaying ? "rgba(239,68,68,0.2)" : "rgba(43,127,255,0.2)",
+                            color: isPlaying ? "#FCA5A5" : "#8AB9FF",
+                            border: "none",
+                            cursor: "pointer",
+                            fontSize: 12,
+                            fontWeight: 700,
+                          }}
+                        >
+                          {isPlaying ? "⏸️ إيقاف" : "▶️ تشغيل"}
+                        </button>
+                        <h4 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#8AB9FF" }}>
+                          {activeMobileSheet === "captions" && "✂️ تعديل الكلمات والتوقيتات والسكت"}
+                          {activeMobileSheet === "audio" && "🎵 الصوت والقارئ والمزامنة"}
+                          {activeMobileSheet === "style" && "🎨 المظهر والخط والتأثيرات"}
+                          {activeMobileSheet === "canvas" && "🎬 المشهد والخلفية والأبعاد"}
+                          {activeMobileSheet === "tajweed" && "⏱️ أحكام التجويد والمدود والوقف"}
+                        </h4>
+                      </div>
 
-                <button
-                  onClick={() => setMobileActiveView((v) => (v === "preview" ? "controls" : "preview"))}
-                  style={{
-                    background: "rgba(255, 255, 255, 0.08)",
-                    color: "#E8EEF7",
-                    border: "1px solid rgba(255, 255, 255, 0.15)",
-                    borderRadius: 10,
-                    padding: "9px 12px",
-                    fontSize: 12,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                  }}
-                >
-                  {mobileActiveView === "preview" ? "أدوات المونتاج" : "شاشة المعاينة"}
-                </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveMobileSheet(null)}
+                        style={{
+                          padding: "6px 18px",
+                          borderRadius: 999,
+                          background: "linear-gradient(135deg, #2B7FFF, #1552CC)",
+                          color: "#0A0D18",
+                          border: "none",
+                          fontSize: 13,
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          boxShadow: "0 2px 8px rgba(43,127,255,0.3)",
+                        }}
+                      >
+                        ✓ تم
+                      </button>
+                    </div>
 
-                <button
-                  onClick={exportVideo}
-                  style={{
-                    background: "linear-gradient(135deg, #2B7FFF, #A8C7FF)",
-                    color: "#0A0D18",
-                    border: "none",
-                    borderRadius: 10,
-                    padding: "9px 14px",
-                    fontSize: 13,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    boxShadow: "0 4px 14px rgba(43,127,255,0.4)",
-                  }}
-                >
-                  تصدير HD
-                </button>
-              </div>
+                    {/* Drawer Content */}
+                    <div style={{ flex: 1, overflowY: "auto", padding: "16px 18px 40px" }}>
+                      {/* SHEET 1: CAPTIONS / WORDS & TIMING */}
+                      {activeMobileSheet === "captions" && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                          {renderWordTimingInspector()}
+
+                          {/* Word Display Mode */}
+                          <div>
+                            <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#8AB9FF", marginBottom: 8 }}>
+                              طريقة ظهور الكلمات مع الصوت:
+                            </label>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                              {[
+                                { id: "one_by_one", title: "كلمة بكلمة" },
+                                { id: "two_by_two", title: "كلمتان متعاقبتان" },
+                                { id: "phrase", title: "مقطع موزون (أشطر)" },
+                                { id: "full_ayah", title: "كامل الآية" },
+                              ].map((m) => (
+                                <button
+                                  key={m.id}
+                                  type="button"
+                                  onClick={() => setCustomization((c) => ({ ...c, wordMode: m.id as WordMode }))}
+                                  style={{
+                                    padding: "10px",
+                                    borderRadius: 10,
+                                    fontSize: 12,
+                                    fontWeight: 700,
+                                    cursor: "pointer",
+                                    border: customization.wordMode === m.id ? "2px solid #2B7FFF" : "1px solid rgba(255,255,255,0.08)",
+                                    background: customization.wordMode === m.id ? "rgba(43,127,255,0.18)" : "rgba(255,255,255,0.03)",
+                                    color: customization.wordMode === m.id ? "#8AB9FF" : "#E8EEF7",
+                                  }}
+                                >
+                                  {m.title}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* SHEET 2: AUDIO & RECITERS */}
+                      {activeMobileSheet === "audio" && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                          <div>
+                            <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#8AB9FF", marginBottom: 8 }}>
+                              اختر القارئ المعتمد لتلاوة المشهد:
+                            </label>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                              {RECITERS.map((r) => (
+                                <button
+                                  key={r.id}
+                                  type="button"
+                                  onClick={async () => {
+                                    setIsLoadingAudio(true);
+                                    try {
+                                      const url = getReciterAudioUrl(result.surah, result.fromAyah, r.id);
+                                      if (previewAudioRef.current) {
+                                        previewAudioRef.current.src = url;
+                                        previewAudioRef.current.load();
+                                      }
+                                       setCustomization((c) => ({ ...c, selectedAudioSource: r.id }));
+                                    } finally {
+                                      setIsLoadingAudio(false);
+                                    }
+                                  }}
+                                  style={{
+                                    padding: "10px",
+                                    borderRadius: 10,
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    cursor: "pointer",
+                                    textAlign: "right",
+                                    border: customization.selectedAudioSource === r.id ? "2px solid #2B7FFF" : "1px solid rgba(255,255,255,0.08)",
+                                    background: customization.selectedAudioSource === r.id ? "rgba(43,127,255,0.18)" : "rgba(255,255,255,0.03)",
+                                    color: customization.selectedAudioSource === r.id ? "#8AB9FF" : "#E8EEF7",
+                                  }}
+                                >
+                                  <div style={{ fontWeight: 700 }}>{r.name}</div>
+                                  <div style={{ fontSize: 10, color: "rgba(200,210,230,0.6)" }}>{r.en}</div>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Sync offset */}
+                          <div style={{ background: "rgba(255,255,255,0.03)", padding: 12, borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                              <span style={{ fontSize: 12, fontWeight: 700 }}>إزاحة مزامنة الصوت:</span>
+                              <span className="force-ltr" style={{ fontSize: 12, color: "#8AB9FF", fontWeight: 700 }}>
+                                {customization.syncOffsetSec > 0 ? `+${customization.syncOffsetSec}s` : `${customization.syncOffsetSec}s`}
+                              </span>
+                            </div>
+                            <input
+                              type="range"
+                              min="-1"
+                              max="1"
+                              step="0.05"
+                              value={customization.syncOffsetSec}
+                              onChange={(e) => setCustomization((c) => ({ ...c, syncOffsetSec: Number(e.target.value) }))}
+                              style={{ width: "100%", accentColor: "#2B7FFF" }}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* SHEET 3: STYLE, FONTS & ANIMATIONS */}
+                      {activeMobileSheet === "style" && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                          {/* Font Family */}
+                          <div>
+                            <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#8AB9FF", marginBottom: 8 }}>
+                              نوع الخط العربي:
+                            </label>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                              {[
+                                { id: "amiri", label: "خط المصحف الأميري (رسم عثماني)" },
+                                { id: "cairo", label: "خط كايرو (عصري سينمائي)" },
+                              ].map((f) => (
+                                <button
+                                  key={f.id}
+                                  type="button"
+                                  onClick={() => setCustomization((c) => ({ ...c, fontFamily: f.id as FontFamily }))}
+                                  style={{
+                                    padding: "10px",
+                                    borderRadius: 10,
+                                    fontSize: 12,
+                                    fontWeight: 700,
+                                    border: customization.fontFamily === f.id ? "2px solid #2B7FFF" : "1px solid rgba(255,255,255,0.08)",
+                                    background: customization.fontFamily === f.id ? "rgba(43,127,255,0.18)" : "rgba(255,255,255,0.03)",
+                                    color: customization.fontFamily === f.id ? "#8AB9FF" : "#E8EEF7",
+                                  }}
+                                >
+                                  {f.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Animation Styles */}
+                          <div>
+                            <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#8AB9FF", marginBottom: 8 }}>
+                              حركة الكلمات عند النطق:
+                            </label>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                              {[
+                                { id: "typewriter", label: "آلة كاتبة حية" },
+                                { id: "pop_bounce", label: "انبثاق وارتداد" },
+                                { id: "shimmer_gold", label: "بريق الذهب" },
+                                { id: "flip_reveal", label: "انقلاب سينمائي" },
+                                { id: "glow_pulse", label: "توهج نابض" },
+                                { id: "fade_slide_up", label: "صعود انسيابي" },
+                              ].map((a) => (
+                                <button
+                                  key={a.id}
+                                  type="button"
+                                  onClick={() => setCustomization((c) => ({ ...c, wordAnimation: a.id as AnimationType }))}
+                                  style={{
+                                    padding: "10px",
+                                    borderRadius: 10,
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    border: customization.wordAnimation === a.id ? "2px solid #2B7FFF" : "1px solid rgba(255,255,255,0.08)",
+                                    background: customization.wordAnimation === a.id ? "rgba(43,127,255,0.18)" : "rgba(255,255,255,0.03)",
+                                    color: customization.wordAnimation === a.id ? "#8AB9FF" : "#E8EEF7",
+                                  }}
+                                >
+                                  {a.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Box Style */}
+                          <div>
+                            <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#8AB9FF", marginBottom: 8 }}>
+                              نمط إطار النصوص:
+                            </label>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                              {[
+                                { id: "glass", label: "زجاجي شفاف فاخر" },
+                                { id: "gold_frame", label: "إطار مذهب إسلامي" },
+                                { id: "dark_cinematic", label: "تعتيم سينمائي ناعم" },
+                                { id: "none", label: "بدون إطار" },
+                              ].map((b) => (
+                                <button
+                                  key={b.id}
+                                  type="button"
+                                  onClick={() => setCustomization((c) => ({ ...c, boxStyle: b.id as BoxStyle }))}
+                                  style={{
+                                    padding: "10px",
+                                    borderRadius: 10,
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    border: customization.boxStyle === b.id ? "2px solid #2B7FFF" : "1px solid rgba(255,255,255,0.08)",
+                                    background: customization.boxStyle === b.id ? "rgba(43,127,255,0.18)" : "rgba(255,255,255,0.03)",
+                                    color: customization.boxStyle === b.id ? "#8AB9FF" : "#E8EEF7",
+                                  }}
+                                >
+                                  {b.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* SHEET 4: CANVAS & BACKGROUND */}
+                      {activeMobileSheet === "canvas" && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                          {/* Aspect Ratio */}
+                          <div>
+                            <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#8AB9FF", marginBottom: 8 }}>
+                              أبعاد ومقاس الفيديو:
+                            </label>
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+                              {(Object.keys(ASPECTS) as AspectKey[]).map((key) => (
+                                <button
+                                  key={key}
+                                  type="button"
+                                  onClick={() => setCustomization((prev) => ({ ...prev, aspect: key }))}
+                                  style={{
+                                    padding: "12px 8px",
+                                    borderRadius: 10,
+                                    fontSize: 13,
+                                    fontWeight: 700,
+                                    border: customization.aspect === key ? "2px solid #2B7FFF" : "1px solid rgba(255,255,255,0.08)",
+                                    background: customization.aspect === key ? "rgba(43,127,255,0.2)" : "rgba(255,255,255,0.03)",
+                                    color: customization.aspect === key ? "#8AB9FF" : "#E8EEF7",
+                                  }}
+                                >
+                                  <div className="force-ltr">{key}</div>
+                                  <div style={{ fontSize: 10, color: "rgba(200,210,230,0.6)", marginTop: 2 }}>
+                                    {ASPECTS[key].label}
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Text Vertical Position */}
+                          <div style={{ background: "rgba(255,255,255,0.03)", padding: 12, borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                              <span style={{ fontSize: 12, fontWeight: 700 }}>ارتفاع النصوص (موضع Y):</span>
+                              <span style={{ fontSize: 12, color: "#8AB9FF", fontWeight: 700 }}>{customization.wordPosY}%</span>
+                            </div>
+                            <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+                              {[
+                                { label: "أعلى (30%)", val: 30 },
+                                { label: "وسط (50%)", val: 50 },
+                                { label: "ريلز (68%)", val: 68 },
+                              ].map((p) => (
+                                <button
+                                  key={p.val}
+                                  type="button"
+                                  onClick={() => setCustomization((c) => ({ ...c, wordPosY: p.val }))}
+                                  style={{
+                                    flex: 1,
+                                    padding: "6px",
+                                    borderRadius: 8,
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                    border: customization.wordPosY === p.val ? "1px solid #2B7FFF" : "1px solid rgba(255,255,255,0.1)",
+                                    background: customization.wordPosY === p.val ? "rgba(43,127,255,0.2)" : "rgba(255,255,255,0.03)",
+                                    color: customization.wordPosY === p.val ? "#8AB9FF" : "#E8EEF7",
+                                  }}
+                                >
+                                  {p.label}
+                                </button>
+                              ))}
+                            </div>
+                            <input
+                              type="range"
+                              min="20"
+                              max="82"
+                              value={customization.wordPosY}
+                              onChange={(e) => setCustomization((c) => ({ ...c, wordPosY: Number(e.target.value) }))}
+                              style={{ width: "100%", accentColor: "#2B7FFF" }}
+                            />
+                          </div>
+
+                          {/* Background Presets */}
+                          <div>
+                            <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#8AB9FF", marginBottom: 8 }}>
+                              خلفيات جاهزة:
+                            </label>
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+                              {[
+                                { id: "mosque_night", label: "مسجد ليلي", type: "preset_image" },
+                                { id: "golden_emerald", label: "زخرفة زمردية", type: "preset_image" },
+                                { id: "space_stars", label: "نجوم متحركة", type: "stars" },
+                                { id: "dark_onyx", label: "أسود ملكي", type: "preset_gradient" },
+                                { id: "spiritual_emerald", label: "أخضر روحاني", type: "preset_gradient" },
+                                { id: "midnight_blue", label: "أزرق كحلي", type: "preset_gradient" },
+                              ].map((b) => (
+                                <button
+                                  key={b.id}
+                                  type="button"
+                                  onClick={() => setCustomization((c) => ({ ...c, bgType: b.type as Customization["bgType"], bgPreset: b.id as BgPreset }))}
+                                  style={{
+                                    padding: "10px 4px",
+                                    borderRadius: 10,
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                    border: customization.bgType === b.type && customization.bgPreset === b.id ? "2px solid #2B7FFF" : "1px solid rgba(255,255,255,0.08)",
+                                    background: customization.bgType === b.type && customization.bgPreset === b.id ? "rgba(43,127,255,0.2)" : "rgba(255,255,255,0.03)",
+                                    color: "#E8EEF7",
+                                  }}
+                                >
+                                  {b.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* SHEET 5: TAJWEED & SILENCE */}
+                      {activeMobileSheet === "tajweed" && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                          {/* Madd vowels hold toggle */}
+                          <div
+                            style={{
+                              background: "rgba(255,255,255,0.03)",
+                              border: "1px solid rgba(255,255,255,0.08)",
+                              borderRadius: 12,
+                              padding: "12px 14px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              cursor: "pointer",
+                            }}
+                            onClick={() => setCustomization((c) => ({ ...c, holdMaddVowels: !c.holdMaddVowels }))}
+                          >
+                            <div style={{ paddingLeft: 10 }}>
+                              <div style={{ fontWeight: 700, fontSize: 13, color: "#8AB9FF" }}>
+                                تثبيت الكلمة طوال زمن المد الصوتي (المد بالحركات)
+                              </div>
+                              <div style={{ fontSize: 11, color: "rgba(200,210,230,0.6)", marginTop: 2 }}>
+                                تبقى الكلمة ظاهرة ومضاءة بثبات طوال مد الصوت والمدود (2 إلى 6 حركات)
+                              </div>
+                            </div>
+                            <input
+                              type="checkbox"
+                              checked={customization.holdMaddVowels}
+                              onChange={(e) => setCustomization((c) => ({ ...c, holdMaddVowels: e.target.checked }))}
+                              style={{ width: 18, height: 18, accentColor: "#2B7FFF" }}
+                            />
+                          </div>
+
+                          {/* Silence Gating Toggle */}
+                          <div
+                            style={{
+                              background: "rgba(255,255,255,0.03)",
+                              border: "1px solid rgba(255,255,255,0.08)",
+                              borderRadius: 12,
+                              padding: "12px 14px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              cursor: "pointer",
+                            }}
+                            onClick={() => setCustomization((c) => ({ ...c, hideOnSilence: !c.hideOnSilence }))}
+                          >
+                            <div style={{ paddingLeft: 10 }}>
+                              <div style={{ fontWeight: 700, fontSize: 13, color: "#8AB9FF" }}>
+                                إخفاء الكلمات تماماً عند توقف الصوت (السكوت والوقف)
+                              </div>
+                              <div style={{ fontSize: 11, color: "rgba(200,210,230,0.6)", marginTop: 2 }}>
+                                عند أخذ النَفَس أو وقفات القارئ تختفي الكلمات ليعكس المشهد الوقف القرآني
+                              </div>
+                            </div>
+                            <input
+                              type="checkbox"
+                              checked={customization.hideOnSilence}
+                              onChange={(e) => setCustomization((c) => ({ ...c, hideOnSilence: e.target.checked }))}
+                              style={{ width: 18, height: 18, accentColor: "#2B7FFF" }}
+                            />
+                          </div>
+
+                          {/* Repetition badge toggle */}
+                          <div
+                            style={{
+                              background: "rgba(255,255,255,0.03)",
+                              border: "1px solid rgba(255,255,255,0.08)",
+                              borderRadius: 12,
+                              padding: "12px 14px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              cursor: "pointer",
+                            }}
+                            onClick={() => setCustomization((c) => ({ ...c, showRepetitionBadge: !c.showRepetitionBadge }))}
+                          >
+                            <div style={{ paddingLeft: 10 }}>
+                              <div style={{ fontWeight: 700, fontSize: 13, color: "#8AB9FF" }}>
+                                إظهار وسم التكرار عند إعادة الكلمات والآيات
+                              </div>
+                              <div style={{ fontSize: 11, color: "rgba(200,210,230,0.6)", marginTop: 2 }}>
+                                عند تكرار القارئ للآية أو الكلمة يظهر وسم توضيحي لإبراز الوقف والابتداء
+                              </div>
+                            </div>
+                            <input
+                              type="checkbox"
+                              checked={customization.showRepetitionBadge}
+                              onChange={(e) => setCustomization((c) => ({ ...c, showRepetitionBadge: e.target.checked }))}
+                              style={{ width: 18, height: 18, accentColor: "#2B7FFF" }}
+                            />
+                          </div>
+
+                          {/* Words Per Stanza Slider */}
+                          <div style={{ background: "rgba(255,255,255,0.03)", padding: 12, borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                              <span style={{ fontSize: 12, fontWeight: 700 }}>تقطيع الآيات إلى مقاطع موزونة:</span>
+                              <span style={{ fontSize: 12, color: "#8AB9FF", fontWeight: 700 }}>{customization.wordsPerStanza} كلمات</span>
+                            </div>
+                            <input
+                              type="range"
+                              min="5"
+                              max="10"
+                              step="1"
+                              value={customization.wordsPerStanza}
+                              onChange={(e) => setCustomization((c) => ({ ...c, wordsPerStanza: Number(e.target.value) }))}
+                              style={{ width: "100%", accentColor: "#2B7FFF" }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
 
           </div>
@@ -4608,20 +5738,6 @@ const ghostBtn: React.CSSProperties = {
   color: "#E8EEF7",
   fontWeight: 600,
   fontSize: 14,
-  cursor: "pointer",
-  direction: "rtl",
-};
-
-/** Thumb-sized control for the phone dock: 44px tall, no hairline targets. */
-const dockButton: React.CSSProperties = {
-  background: "rgba(255, 255, 255, 0.08)",
-  border: "1px solid rgba(255, 255, 255, 0.15)",
-  color: "#E8EEF7",
-  borderRadius: 10,
-  padding: "11px 12px",
-  minHeight: 44,
-  fontSize: 12,
-  fontWeight: 600,
   cursor: "pointer",
   direction: "rtl",
 };
