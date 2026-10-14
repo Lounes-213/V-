@@ -297,6 +297,113 @@ function distributeCanonicalWordsAcrossDuration(
   });
 }
 
+/**
+ * Precision Quran Audio Forced Alignment Engine.
+ * Aligns the known sequence of canonical Quranic words against the recitation audio,
+ * capturing exact start and end intervals, natural pauses, and prolonged Madd.
+ */
+async function alignCanonicalWordsToAudioWithAi(
+  bytes: Buffer,
+  mimeType: string,
+  canonicalAyahs: { ayah: number; text: string }[],
+  durationSec: number,
+  apiKey: string,
+): Promise<{ text: string; ayah: number; start: number; end: number }[]> {
+  type Token = { word: string; ayah: number };
+  const flatTokens: Token[] = [];
+  for (const ca of canonicalAyahs) {
+    const rawTokens = ca.text.split(/\s+/).filter((t) => !/^[ۚۖۗۘۙۜ۞۩]+$/.test(t) && Boolean(t));
+    for (const tok of rawTokens) {
+      flatTokens.push({ word: tok, ayah: ca.ayah });
+    }
+  }
+
+  if (flatTokens.length === 0) return [];
+
+  const b64 = bytes.toString("base64");
+  const wordList = flatTokens.map((w) => w.word).join(" ");
+
+  const prompt = `You are a precision Quran audio forced alignment engine.
+The audio recitation matches these exact Arabic Quran words in order:
+${wordList}
+
+Listen carefully to the audio clip (duration 0.0s to ${durationSec.toFixed(1)}s).
+For each word, identify the EXACT interval during which it is uttered:
+- 'start': when the speaker starts reciting this word (in seconds)
+- 'end': when the speaker finishes reciting this word (in seconds, end > start). Hold 'end' to include prolonged Madd (المد) and vowels.
+
+Do not output identical start and end values. End MUST be strictly greater than start.
+If any words at the end of the text were not recited in this clip, do not include them.
+
+Return ONLY a valid JSON array:
+[
+  {"word": "${flatTokens[0]!.word}", "ayah": ${flatTokens[0]!.ayah}, "start": 0.15, "end": 0.95}
+]`;
+
+  const models = ["gemini-3.5-flash-lite", "gemini-flash-lite-latest", "gemini-3.1-flash-lite"];
+
+  for (const model of models) {
+    try {
+      const res = await fetch(`${ENDPOINT}/models/${model}:generateContent`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-goog-api-key": apiKey },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: "user",
+              parts: [
+                { inlineData: { mimeType, data: b64 } },
+                { text: prompt },
+              ],
+            },
+          ],
+          generationConfig: {
+            responseMimeType: "application/json",
+            temperature: 0.1,
+            maxOutputTokens: 4096,
+          },
+        }),
+        signal: AbortSignal.timeout(20000),
+      });
+
+      if (res.ok) {
+        const json = (await res.json()) as GeminiResponse;
+        const rawText = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
+        let cleanText = rawText;
+        if (cleanText.startsWith("```")) {
+          cleanText = cleanText.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+        }
+        const parsed = JSON.parse(cleanText) as { word?: string; ayah?: number; start?: number; end?: number }[];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          console.log(`[detect-audio] Forced alignment succeeded with ${model}: aligned ${parsed.length} words`);
+          const resultWords: { text: string; ayah: number; start: number; end: number }[] = [];
+          for (let i = 0; i < parsed.length; i++) {
+            const pw = parsed[i]!;
+            if (typeof pw.start === "number" && typeof pw.end === "number") {
+              const canonTok = flatTokens[i] || { word: pw.word || "", ayah: pw.ayah || 1 };
+              const start = Math.max(0, Math.min(durationSec, Number(pw.start.toFixed(3))));
+              const end = Math.max(start + 0.1, Math.min(durationSec, Number(pw.end.toFixed(3))));
+              resultWords.push({
+                text: canonTok.word,
+                ayah: canonTok.ayah,
+                start,
+                end,
+              });
+            }
+          }
+          if (resultWords.length > 0) {
+            return resultWords;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn(`[detect-audio] Forced alignment ${model} warning:`, (err as Error).message);
+    }
+  }
+
+  return [];
+}
+
 // In-memory cache for surah verse maps
 const surahVerseCache = new Map<
   number,
@@ -899,12 +1006,12 @@ Return valid JSON with keys: surah, fromAyah, toAyah, isPartial, confidence, rec
   }
 
   const fromAyah = rawFrom;
-  const toAyah = rawTo;
+  let toAyah = rawTo;
   const isPartial = Boolean(result.isPartial);
 
   // 1. Fetch official Uthmani text and translations for all ayahs in the passage
   const verseMap = await getSurahVerses(result.surah);
-  const passageAyahs: {
+  let passageAyahs: {
     ayah: number;
     uthmani: string;
     translation: string;
@@ -921,15 +1028,37 @@ Return valid JSON with keys: surah, fromAyah, toAyah, isPartial, confidence, rec
     });
   }
 
-  // 2. Align or generate word-by-word timestamps
+  // 2. High-Precision Acoustic Forced Alignment for Quranic words
   const canonicalAyahsForWords = passageAyahs.map((pa) => ({ ayah: pa.ayah, text: pa.uthmani }));
   let alignedWords: { text: string; ayah: number; start: number; end: number }[] = [];
 
   if (result.words && result.words.length > 0) {
     alignedWords = alignWordsWithCanonical(result.words, canonicalAyahsForWords);
   } else {
-    // Generate smooth acoustic timestamps distributed across the clip
-    alignedWords = distributeCanonicalWordsAcrossDuration(canonicalAyahsForWords, durationSec);
+    // Run AI Acoustic Forced Alignment against known canonical words
+    const aiForced = await alignCanonicalWordsToAudioWithAi(
+      bytes,
+      mimeType,
+      canonicalAyahsForWords,
+      durationSec,
+      apiKey,
+    );
+    if (aiForced.length > 0) {
+      alignedWords = aiForced;
+    } else {
+      // Fallback: Tajweed-weighted distribution
+      alignedWords = distributeCanonicalWordsAcrossDuration(canonicalAyahsForWords, durationSec);
+    }
+  }
+
+  // If words were aligned, ensure toAyah reflects the actual recited ayahs in the audio clip
+  if (alignedWords.length > 0) {
+    const lastRecitedAyah = alignedWords[alignedWords.length - 1]?.ayah;
+    if (lastRecitedAyah && lastRecitedAyah >= fromAyah && lastRecitedAyah < toAyah) {
+      console.log(`[detect-audio] Trimming unrecited tail ayahs: adjusting toAyah from ${toAyah} to ${lastRecitedAyah}`);
+      toAyah = lastRecitedAyah;
+      passageAyahs = passageAyahs.filter((pa) => pa.ayah <= toAyah);
+    }
   }
 
   // 3. Assemble complete response

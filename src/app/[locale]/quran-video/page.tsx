@@ -1144,11 +1144,12 @@ export default function QuranVideoPage() {
 
       const inputWords = piecesWithAyah.length > 0 ? piecesWithAyah : [{ text: detection.uthmani, ayah: detection.ayah }];
 
-      // Check if pre-aligned words exist and match the full word count
-      const hasPreAlignedWords =
+      // Check if pre-aligned words exist and have valid acoustic intervals
+      const hasPreAlignedWords = Boolean(
         detection.words &&
-        detection.words.length === inputWords.length &&
-        detection.words.every((w, i) => i === 0 || w.start >= detection.words[i - 1]!.start);
+        detection.words.length > 0 &&
+        detection.words.some((w) => w.end > w.start),
+      );
 
       // Tajweed-aware acoustic alignment with VAD runs, silences, and onset snapping
       const mappedWords = alignWordsAcoustically({

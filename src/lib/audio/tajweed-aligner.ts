@@ -224,10 +224,10 @@ export function alignWordsAcoustically(options: AcousticAlignOptions): TimedWord
 
   if (words.length === 0) return [];
 
-  // If high-confidence AI word timestamps already exist and match word count, blend with Tajweed weights
-  if (existingWordTimings && existingWordTimings.length === words.length) {
+  // If high-confidence AI word timestamps already exist, blend with Tajweed weights
+  if (existingWordTimings && existingWordTimings.length > 0) {
     return existingWordTimings.map((ew, idx) => {
-      const isLast = idx === words.length - 1 || words[idx + 1]?.ayah !== ew.ayah;
+      const isLast = idx === existingWordTimings.length - 1 || existingWordTimings[idx + 1]?.ayah !== ew.ayah;
       const tajweed = computeTajweedWordWeight(ew.text, isLast);
       return {
         text: ew.text,
